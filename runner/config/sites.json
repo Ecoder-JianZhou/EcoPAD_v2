@@ -1,0 +1,28 @@
+{
+  "sites": [
+    {
+      "id": "Example",
+      "name": "Example Template",
+      "base_url": "http://site-template:8011",
+      "enabled": true,
+      "models": ["MODEL-template_1", "MODEL-template_2"],
+      "treatments": [],
+      "meta": {
+        "region": "Beebe",
+        "ecosystem_type": "terrestrial"
+      }
+    },
+    {
+      "id": "SPRUCE",
+      "name": "Spruce and Peatland Responses Under Changing Environments",
+      "base_url": "http://site-SPRUCE:8012",
+      "enabled": true,
+      "models": ["TECO-SPRUCE_v2", "TECO-SPRUCE_v3"],
+      "treatments": [],
+      "meta": {
+        "region": "Northern Minnesota, US",
+        "ecosystem_type": "Peatlands"
+      }
+    }
+  ]
+}

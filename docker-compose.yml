@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  portal:
+    build:
+      context: ./portal
+      dockerfile: Dockerfile
+    container_name: ecopad-portal
+    ports:
+      - "8000:8000"
+    environment:
+      RUNNER_SERVICE_URL: http://runner:8001
+      PORTAL_DB_PATH: /data/portal.db
+    volumes:
+      - portal_data:/data
+    depends_on:
+      - runner
+    restart: unless-stopped
+
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    container_name: ecopad-runner
+    ports:
+      - "8001:8001"
+    environment:
+      RUNNER_DB_PATH: /app/db/runner.db
+      SITES_CONFIG_PATH: /app/config/sites.json
+      SITE_REQUEST_TIMEOUT: "120"
+    volumes:
+      - runner_data:/app/db
+    depends_on:
+      - site-spruce
+    restart: unless-stopped
+
+  site-spruce:
+    build:
+      context: ./sites/site-SPRUCE
+      dockerfile: Dockerfile
+    container_name: ecopad-site-spruce
+    ports:
+      - "8011:8011"
+    environment:
+      SITE_ID: SPRUCE
+      SITE_CONFIG_DIR: /app/config
+      SITE_DATA_DIR: /app/data
+      SITE_RUNS_DIR: /app/data/runs
+    volumes:
+      - site_spruce_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  portal_data:
+  runner_data:
+  site_spruce_data:

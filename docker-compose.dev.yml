@@ -1,0 +1,95 @@
+services:
+  portal:
+    build:
+      context: ./portal
+      dockerfile: Dockerfile
+    container_name: ecopad-portal-dev
+    ports:
+      - "8000:8000"
+    environment:
+      RUNNER_SERVICE_URL: http://runner:8001
+      PORTAL_DB_PATH: /data/portal.db
+    volumes:
+      - ./portal/app:/app/app
+      - ./portal/data:/data
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+    depends_on:
+      runner:
+        condition: service_started
+    restart: unless-stopped
+
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    container_name: ecopad-runner-dev
+    ports:
+      - "8001:8001"
+    environment:
+      RUNNER_DB_PATH: /app/db/runner.db
+      SITES_CONFIG_PATH: /app/config/sites.json
+      SITE_REQUEST_TIMEOUT: "120"
+    volumes:
+      - ./runner/app:/app/app
+      - ./runner/config:/app/config
+      - ./runner/db:/app/db
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8001
+      --reload
+      --reload-dir /app/app
+      --reload-dir /app/config
+    depends_on:
+      site-spruce:
+        condition: service_started
+    restart: unless-stopped
+
+  site-template:
+    build:
+      context: ./sites/site-template
+      dockerfile: Dockerfile
+    container_name: ecopad-site-template-dev
+    ports:
+      - "8011:8011"
+    environment:
+      SITE_CONFIG_PATH: /app/config/site.json
+    volumes:
+      - ./sites/site-template/app:/app/app
+      - ./sites/site-template/config:/app/config
+      - ./sites/site-template/workspace:/app/workspace
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8011
+      --reload
+      --reload-dir /app/app
+      --reload-dir /app/config
+    restart: unless-stopped
+
+  site-spruce:
+    build:
+      context: ./sites/site-SPRUCE
+      dockerfile: Dockerfile
+    container_name: ecopad-site-SPRUCE
+    ports:
+      - "8012:8012"
+    environment:
+      SITE_CONFIG_PATH: /app/config/site.json
+    volumes:
+      - ./sites/site-SPRUCE/app:/app/app
+      - ./sites/site-SPRUCE/config:/app/config
+      - ./sites/site-SPRUCE/workspace:/app/workspace
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8012
+      --reload
+      --reload-dir /app/app
+      --reload-dir /app/config
+    restart: unless-stopped

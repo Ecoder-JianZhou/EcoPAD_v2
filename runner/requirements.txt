@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+httpx
+aiosqlite
+pydantic
+APScheduler==3.10.4

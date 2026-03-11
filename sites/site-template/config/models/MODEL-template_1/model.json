@@ -1,0 +1,36 @@
+{
+  "id": "MODEL-template_1",
+  "name": "MODEL-template_1",
+  "description": "Example model No.1 for template",
+
+  "parameter_outputs": {
+    "summary": "summary.json",
+    "accepted": "parameters_accepted.csv",
+    "best": "parameters_best.json"
+  },
+
+  "tasks": {
+    "simulate": {
+      "enabled": true,
+      "desc": "Run one deterministic simulation.",
+      "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
+    },
+    "forecast": {
+      "enabled": true,
+      "desc": "Generate forecast outputs.",
+      "command": ["python", "/app/executors/MODEL-template_1_forecast.py", "{run_dir}"]
+    },
+    "auto_forecast": {
+      "enabled": true,
+      "desc": "Run scheduled forecast generation.",
+      "command": ["python", "/app/executors/MODEL-template_1_auto_forecast.py", "{run_dir}"]
+    },
+    "mcmc": {
+      "enabled": true,
+      "desc": "Run MCMC-based data assimilation.",
+      "command": ["python", "/app/executors/MODEL-template_1_mcmc.py", "{run_dir}"]
+    }
+  },
+
+  "default_publish_variables": ["GPP", "ER", "NEE"]
+}

@@ -1,0 +1,14 @@
+{
+  "site_id": "Example",
+  "site_name": "Example template",
+  "description": "An example as a template",
+  "models": [
+    "MODEL-template_1",
+    "MODEL-template_2"
+  ],
+  "treatments": [
+    "treatment_1",
+    "treatment_2"
+  ],
+  "default_model": "MODEL-template_1"
+}

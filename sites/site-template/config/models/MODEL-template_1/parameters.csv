@@ -1,0 +1,4 @@
+id,name,unit,default,min,max,desc
+vcmax,Maximum carboxylation rate,umol m-2 s-1,45,10,120,Maximum Rubisco carboxylation capacity
+rl0,Base leaf respiration rate,umol m-2 s-1,0.8,0.1,3.0,Base respiration rate of leaves
+q10,Temperature sensitivity of respiration,-,2.0,1.2,3.5,Respiration temperature sensitivity
