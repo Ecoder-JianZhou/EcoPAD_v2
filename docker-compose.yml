@@ -1,20 +1,33 @@
-version: "3.9"
-
 services:
+  nginx:
+    image: nginx:stable
+    container_name: ecopad-nginx
+    ports:
+      - "2026:2026"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - portal
+    restart: unless-stopped
+
   portal:
     build:
       context: ./portal
       dockerfile: Dockerfile
     container_name: ecopad-portal
-    ports:
-      - "8000:8000"
     environment:
       RUNNER_SERVICE_URL: http://runner:8001
       PORTAL_DB_PATH: /data/portal.db
     volumes:
-      - portal_data:/data
+      - ./portal/data:/data
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
     depends_on:
       - runner
+    expose:
+      - "8000"
     restart: unless-stopped
 
   runner:
@@ -22,16 +35,38 @@ services:
       context: ./runner
       dockerfile: Dockerfile
     container_name: ecopad-runner
-    ports:
-      - "8001:8001"
     environment:
       RUNNER_DB_PATH: /app/db/runner.db
       SITES_CONFIG_PATH: /app/config/sites.json
       SITE_REQUEST_TIMEOUT: "120"
     volumes:
-      - runner_data:/app/db
-    depends_on:
-      - site-spruce
+      - ./runner/config:/app/config
+      - ./runner/db:/app/db
+      - ./runner/runtime:/app/runtime
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8001
+    expose:
+      - "8001"
+    restart: unless-stopped
+
+  site-template:
+    build:
+      context: ./sites/site-template
+      dockerfile: Dockerfile
+    container_name: ecopad-site-template
+    environment:
+      SITE_CONFIG_PATH: /app/config/site.json
+    volumes:
+      - ./sites/site-template/config:/app/config
+      - ./sites/site-template/workspace:/app/workspace
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8011
+    expose:
+      - "8011"
     restart: unless-stopped
 
   site-spruce:
@@ -39,18 +74,15 @@ services:
       context: ./sites/site-SPRUCE
       dockerfile: Dockerfile
     container_name: ecopad-site-spruce
-    ports:
-      - "8011:8011"
     environment:
-      SITE_ID: SPRUCE
-      SITE_CONFIG_DIR: /app/config
-      SITE_DATA_DIR: /app/data
-      SITE_RUNS_DIR: /app/data/runs
+      SITE_CONFIG_PATH: /app/config/site.json
     volumes:
-      - site_spruce_data:/app/data
+      - ./sites/site-SPRUCE/config:/app/config
+      - ./sites/site-SPRUCE/workspace:/app/workspace
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8012
+    expose:
+      - "8012"
     restart: unless-stopped
-
-volumes:
-  portal_data:
-  runner_data:
-  site_spruce_data:
