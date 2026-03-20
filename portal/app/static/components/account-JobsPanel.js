@@ -1,4 +1,5 @@
 import { api } from "../core/api.js";
+import { AccountJobsDownloadModal } from "./account-JobsDownload.js";
 
 function fmtIsoCompact(value) {
   if (!value || typeof value !== "string") return "—";
@@ -93,20 +94,6 @@ function canDeleteJob(job) {
   return s === "done" || s === "failed" || s === "cancelled";
 }
 
-function downloadJson(filename, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 function displayRunTime(job) {
   return job?.finished_at || job?.updated_at || job?.created_at || "";
 }
@@ -130,24 +117,16 @@ export function AccountJobsPanel({
   const e = React.createElement;
   const [busyId, setBusyId] = React.useState("");
   const [expanded, setExpanded] = React.useState({});
+  const [downloadJob, setDownloadJob] = React.useState(null);
 
   function toggleJob(jobId) {
     setExpanded((prev) => ({ ...prev, [jobId]: !prev[jobId] }));
   }
 
-  async function handleDownload(job, ev) {
+  function handleDownload(job, ev) {
     ev.preventDefault();
     ev.stopPropagation();
-
-    setBusyId(`download-${job.id}`);
-    try {
-      const manifest = await api.workflowRunManifest(auth.token, job.id);
-      downloadJson(`run-${job.id}-manifest.json`, manifest || {});
-    } catch (ex) {
-      alert(ex.message || "Failed to download manifest.");
-    } finally {
-      setBusyId("");
-    }
+    setDownloadJob(job);
   }
 
   async function handleDelete(job, ev) {
@@ -155,14 +134,23 @@ export function AccountJobsPanel({
     ev.stopPropagation();
 
     if (!canDeleteJob(job)) return;
-    if (!window.confirm(`Delete job ${job.id}?`)) return;
+
+    const ok = window.confirm(
+      `Delete run ${job.id} from the database and remove its site files?\n\nThis action cannot be undone.`
+    );
+    if (!ok) return;
 
     setBusyId(`delete-${job.id}`);
     try {
       await api.accountDeleteJob(auth.token, job.id);
+
+      if (downloadJob?.id === job.id) {
+        setDownloadJob(null);
+      }
+
       await onRefreshJobs?.();
     } catch (ex) {
-      alert(ex.message || "Failed to delete job.");
+      alert(ex.message || "Failed to delete run.");
     } finally {
       setBusyId("");
     }
@@ -170,212 +158,227 @@ export function AccountJobsPanel({
 
   if (!jobs || jobs.length === 0) {
     return e(
-      "div",
-      { className: "muted", style: { marginTop: 10 } },
-      "No jobs yet. Submit one in Custom Workflow."
+      React.Fragment,
+      null,
+      e(
+        "div",
+        { className: "muted", style: { marginTop: 10 } },
+        "No jobs yet. Submit one in Custom Workflow."
+      )
     );
   }
 
   return e(
-    "div",
-    {
-      className: "job-grid2",
-      style: {
-        display: "grid",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-        gap: 14,
-        alignItems: "start",
-      },
-    },
-    jobs.map((job) => {
-      const isOpen = !!expanded[job.id];
+    React.Fragment,
+    null,
 
-      return e(
-        "div",
-        {
-          key: job.id,
-          className: "jobcard3",
+    e(AccountJobsDownloadModal, {
+      auth,
+      open: !!downloadJob,
+      job: downloadJob,
+      onClose: () => setDownloadJob(null),
+    }),
+
+    e(
+      "div",
+      {
+        className: "job-grid2",
+        style: {
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 14,
+          alignItems: "start",
         },
+      },
+      jobs.map((job) => {
+        const isOpen = !!expanded[job.id];
 
-        e(
+        return e(
           "div",
           {
-            className: "jhead",
-            role: "button",
-            tabIndex: 0,
-            onClick: () => toggleJob(job.id),
-            onKeyDown: (ev) => {
-              if (ev.key === "Enter" || ev.key === " ") {
-                ev.preventDefault();
-                toggleJob(job.id);
-              }
-            },
-            style: {
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 12,
-            },
-            title: isOpen ? "Collapse job details" : "Expand job details",
+            key: job.id,
+            className: "jobcard3",
           },
+
           e(
             "div",
             {
-              className: "jtitlewrap",
-              style: {
-                minWidth: 0,
-                flex: "1 1 auto",
+              className: "jhead",
+              role: "button",
+              tabIndex: 0,
+              onClick: () => toggleJob(job.id),
+              onKeyDown: (ev) => {
+                if (ev.key === "Enter" || ev.key === " ") {
+                  ev.preventDefault();
+                  toggleJob(job.id);
+                }
               },
+              style: {
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12,
+              },
+              title: isOpen ? "Collapse job details" : "Expand job details",
             },
             e(
               "div",
               {
-                className: "jtitle",
+                className: "jtitlewrap",
                 style: {
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  lineHeight: 1.3,
+                  minWidth: 0,
+                  flex: "1 1 auto",
                 },
               },
-              job.name || "(unnamed job)"
+              e(
+                "div",
+                {
+                  className: "jtitle",
+                  style: {
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    lineHeight: 1.3,
+                  },
+                },
+                job.name || "(unnamed job)"
+              ),
+              e(
+                "div",
+                {
+                  className: "jsub muted",
+                  style: {
+                    marginTop: 4,
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  },
+                },
+                e("span", { className: "jmono" }, `#${job.id}`),
+                e("span", { className: "jdot" }, "•"),
+                e("span", null, `${job.site || "—"} · ${job.task || "—"}`)
+              )
             ),
             e(
               "div",
               {
-                className: "jsub muted",
                 style: {
-                  marginTop: 4,
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
+                  flex: "0 0 auto",
+                  display: "flex",
+                  alignItems: "center",
                 },
               },
-              e("span", { className: "jmono" }, `#${job.id}`),
-              e("span", { className: "jdot" }, "•"),
-              e("span", null, `${job.site || "—"} · ${job.task || "—"}`)
+              e(StatusPill, { status: job.status })
             )
           ),
+
           e(
             "div",
             {
-              style: {
-                flex: "0 0 auto",
-                display: "flex",
-                alignItems: "center",
+              className: "jmeta",
+              role: "button",
+              tabIndex: 0,
+              onClick: () => toggleJob(job.id),
+              onKeyDown: (ev) => {
+                if (ev.key === "Enter" || ev.key === " ") {
+                  ev.preventDefault();
+                  toggleJob(job.id);
+                }
               },
+              style: { cursor: "pointer" },
             },
-            e(StatusPill, { status: job.status })
-          )
-        ),
+            e("span", { className: "muted" }, "Run time: "),
+            e("span", null, fmtIsoCompact(displayRunTime(job)))
+          ),
 
-        e(
-          "div",
-          {
-            className: "jmeta",
-            role: "button",
-            tabIndex: 0,
-            onClick: () => toggleJob(job.id),
-            onKeyDown: (ev) => {
-              if (ev.key === "Enter" || ev.key === " ") {
-                ev.preventDefault();
-                toggleJob(job.id);
-              }
-            },
-            style: { cursor: "pointer" },
-          },
-          e("span", { className: "muted" }, "Run time: "),
-          e("span", null, fmtIsoCompact(displayRunTime(job)))
-        ),
-
-        !isOpen
-          ? null
-          : e(
-              React.Fragment,
-              null,
-              e(
-                "div",
-                { className: "jbody" },
+          !isOpen
+            ? null
+            : e(
+                React.Fragment,
+                null,
                 e(
                   "div",
-                  { className: "jrow" },
-                  e("div", { className: "jk muted" }, "Trigger"),
-                  e("div", { className: "jv" }, displayTrigger(job))
+                  { className: "jbody" },
+                  e(
+                    "div",
+                    { className: "jrow" },
+                    e("div", { className: "jk muted" }, "Trigger"),
+                    e("div", { className: "jv" }, displayTrigger(job))
+                  ),
+                  e(
+                    "div",
+                    { className: "jrow" },
+                    e("div", { className: "jk muted" }, "Schedule"),
+                    e("div", { className: "jv" }, job.scheduled_task_id ?? "—")
+                  ),
+                  e(ChipsLine, {
+                    label: "Models",
+                    items: job.models || [],
+                    max: 3,
+                    variant: "m",
+                  }),
+                  e(ChipsLine, {
+                    label: "Treatments",
+                    items: job.treatments || [],
+                    max: 4,
+                    variant: "t",
+                  }),
+                  job.error_message
+                    ? e(
+                        "div",
+                        { className: "jrow" },
+                        e("div", { className: "jk muted" }, "Error"),
+                        e("div", { className: "jv" }, String(job.error_message))
+                      )
+                    : null
                 ),
+
                 e(
                   "div",
-                  { className: "jrow" },
-                  e("div", { className: "jk muted" }, "Schedule"),
-                  e("div", { className: "jv" }, job.scheduled_task_id ?? "—")
-                ),
-                e(ChipsLine, {
-                  label: "Models",
-                  items: job.models || [],
-                  max: 3,
-                  variant: "m",
-                }),
-                e(ChipsLine, {
-                  label: "Treatments",
-                  items: job.treatments || [],
-                  max: 4,
-                  variant: "t",
-                }),
-                job.error_message
-                  ? e(
-                      "div",
-                      { className: "jrow" },
-                      e("div", { className: "jk muted" }, "Error"),
-                      e("div", { className: "jv" }, String(job.error_message))
-                    )
-                  : null
-              ),
-
-              e(
-                "div",
-                {
-                  className: "jfoot",
-                  style: { display: "flex", gap: 8, flexWrap: "wrap" },
-                },
-                e(
-                  "button",
                   {
-                    type: "button",
-                    className: "btn primary",
-                    onClick: (ev) => {
-                      ev.preventDefault();
-                      ev.stopPropagation();
-                      onView(job);
-                    },
-                    disabled: loadingRun,
+                    className: "jfoot",
+                    style: { display: "flex", gap: 8, flexWrap: "wrap" },
                   },
-                  loadingRun ? "Loading..." : "View"
-                ),
-
-                e(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn",
-                    onClick: (ev) => handleDownload(job, ev),
-                    disabled: busyId === `download-${job.id}`,
-                  },
-                  busyId === `download-${job.id}` ? "Downloading..." : "Download"
-                ),
-
-                canDeleteJob(job)
-                  ? e(
-                      "button",
-                      {
-                        type: "button",
-                        className: "btn",
-                        onClick: (ev) => handleDelete(job, ev),
-                        disabled: busyId === `delete-${job.id}`,
+                  e(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn primary",
+                      onClick: (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        onView(job);
                       },
-                      busyId === `delete-${job.id}` ? "Deleting..." : "Delete"
-                    )
-                  : null
+                      disabled: loadingRun,
+                    },
+                    loadingRun ? "Loading..." : "View"
+                  ),
+
+                  e(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn",
+                      onClick: (ev) => handleDownload(job, ev),
+                    },
+                    "Download"
+                  ),
+
+                  canDeleteJob(job)
+                    ? e(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn",
+                          onClick: (ev) => handleDelete(job, ev),
+                          disabled: busyId === `delete-${job.id}`,
+                        },
+                        busyId === `delete-${job.id}` ? "Deleting..." : "Delete"
+                      )
+                    : null
+                )
               )
-            )
-      );
-    })
+        );
+      })
+    )
   );
 }

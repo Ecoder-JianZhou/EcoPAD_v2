@@ -1,0 +1,170 @@
+{
+  "run_id": "77c1aa278bbd4353abc5bcea5ec46323",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "trigger_type": "scheduled",
+  "request": {
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "auto_forecast",
+    "payload": {
+      "name": "test",
+      "treatments": [
+        "treatment_1"
+      ],
+      "parameters": {
+        "vcmax": 45,
+        "rl0": 0.8,
+        "q10": 2
+      },
+      "da": {},
+      "notes": ""
+    }
+  },
+  "execution": {
+    "status": "done"
+  },
+  "outputs": {
+    "index": {
+      "MODEL-template_1": {
+        "treatment_1": {
+          "GPP": "outputs/MODEL-template_1/treatment_1/GPP.json",
+          "ER": "outputs/MODEL-template_1/treatment_1/ER.json",
+          "NEE": "outputs/MODEL-template_1/treatment_1/NEE.json"
+        }
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "GPP",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/GPP.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_standard",
+      "metadata": {}
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "ER",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/ER.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_standard",
+      "metadata": {}
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "NEE",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/NEE.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_standard",
+      "metadata": {}
+    },
+    {
+      "artifact_type": "parameter_summary",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/summary.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "parameters": {
+          "vcmax": {
+            "value": 55.204895,
+            "accepted_min": 28.737212,
+            "accepted_max": 60.974526,
+            "mean": 45.083574,
+            "median": null,
+            "sd": null,
+            "map": null,
+            "unit": "umol m-2 s-1",
+            "name": "Maximum carboxylation rate"
+          },
+          "rl0": {
+            "value": 1.226334,
+            "accepted_min": 0.380459,
+            "accepted_max": 1.226334,
+            "mean": 0.797723,
+            "median": null,
+            "sd": null,
+            "map": null,
+            "unit": "umol m-2 s-1",
+            "name": "Base leaf respiration rate"
+          },
+          "q10": {
+            "value": 2.338127,
+            "accepted_min": 1.667261,
+            "accepted_max": 2.338127,
+            "mean": 1.998194,
+            "median": null,
+            "sd": null,
+            "map": null,
+            "unit": "-",
+            "name": "Temperature sensitivity of respiration"
+          }
+        }
+      }
+    },
+    {
+      "artifact_type": "parameters_accepted",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/parameters_accepted.csv",
+      "media_type": "text/csv",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1"
+      }
+    }
+  ],
+  "forecast_registry": [
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "GPP",
+      "data_path": "outputs/MODEL-template_1/treatment_1/GPP.json",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/GPP.json",
+        "media_type": "application/json"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "ER",
+      "data_path": "outputs/MODEL-template_1/treatment_1/ER.json",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/ER.json",
+        "media_type": "application/json"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "NEE",
+      "data_path": "outputs/MODEL-template_1/treatment_1/NEE.json",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/NEE.json",
+        "media_type": "application/json"
+      },
+      "is_published": 1
+    }
+  ]
+}

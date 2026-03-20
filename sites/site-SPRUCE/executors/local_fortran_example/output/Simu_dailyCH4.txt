@@ -1,0 +1,1 @@
+ day,simuCH4_d,pro_sum_d,oxi_sum_d,fdifu1_d,ebu_sum_d,pla_sum_d,CH4V1,CH4V2,CH4V3,CH4V4,CH4V5,    CH4V6,CH4V7,CH4V8,CH4V9,CH4V10

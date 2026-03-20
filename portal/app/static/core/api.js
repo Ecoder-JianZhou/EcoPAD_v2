@@ -33,6 +33,32 @@ function buildQuery(paramsObj = {}) {
   return text ? `?${text}` : "";
 }
 
+function normalizeOutputType(value) {
+  const s = String(value || "").trim();
+  if (!s) return "";
+
+  const mapping = {
+    simulate: "simulation_without_da",
+    simulation_without_da: "simulation_without_da",
+    simulation_with_da: "simulation_with_da",
+    forecast_with_da: "forecast_with_da",
+    forecast_without_da: "forecast_without_da",
+    auto_forecast_with_da: "auto_forecast_with_da",
+    auto_forecast_without_da: "auto_forecast_without_da",
+  };
+
+  return mapping[s] || s;
+}
+
+function withOutputTypeCompat(params = {}) {
+  const outputType = normalizeOutputType(params.output_type || params.series_type || "");
+  return {
+    ...params,
+    output_type: outputType || undefined,
+    series_type: outputType || undefined,
+  };
+}
+
 export const api = {
   // -------------------------------------------------------------------
   // Auth
@@ -198,22 +224,75 @@ export const api = {
     });
   },
 
-  workflowRunTimeseries(token, runId, { variable, model, treatment }) {
-    const query = buildQuery({ variable, model, treatment });
+  workflowRunTimeseries(
+    token,
+    runId,
+    {
+      variable,
+      model,
+      treatment,
+      output_type = "",
+      series_type = "",
+    }
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        variable,
+        model,
+        treatment,
+        output_type,
+        series_type,
+      })
+    );
+
     return requestJson(`/api/workflow/runs/${encodeURIComponent(runId)}/timeseries${query}`, {
       headers: { ...authHeaders(token) },
     });
   },
 
-  workflowRunParameterSummary(token, runId, { model, treatment }) {
-    const query = buildQuery({ model, treatment });
+  workflowRunParameterSummary(
+    token,
+    runId,
+    {
+      model,
+      treatment,
+      output_type = "",
+      series_type = "",
+    }
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        model,
+        treatment,
+        output_type,
+        series_type,
+      })
+    );
+
     return requestJson(`/api/workflow/runs/${encodeURIComponent(runId)}/parameter_summary${query}`, {
       headers: { ...authHeaders(token) },
     });
   },
 
-  workflowRunParametersAccepted(token, runId, { model, treatment }) {
-    const query = buildQuery({ model, treatment });
+  workflowRunParametersAccepted(
+    token,
+    runId,
+    {
+      model,
+      treatment,
+      output_type = "",
+      series_type = "",
+    }
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        model,
+        treatment,
+        output_type,
+        series_type,
+      })
+    );
+
     return requestJson(`/api/workflow/runs/${encodeURIComponent(runId)}/parameters_accepted${query}`, {
       headers: { ...authHeaders(token) },
     });
@@ -230,22 +309,35 @@ export const api = {
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/meta`);
   },
 
-  forecastData(siteId, variable, models = "", treatments = "") {
-    const query = buildQuery({
-      variable,
-      models,
-      treatments,
-    });
-    return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/data${query}`);
-  },
-
   forecastSummary(siteId) {
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/summary`);
   },
 
-  forecastObs(siteId, variable, treatments = "") {
+  forecastData(
+    siteId,
+    variable,
+    models = "",
+    treatments = "",
+    output_type = "",
+    show_obs = false
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        variable,
+        models,
+        treatments,
+        output_type,
+        show_obs: show_obs ? 1 : 0,
+      })
+    );
+
+    return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/data${query}`);
+  },
+
+  forecastObs(siteId, variable, models = "", treatments = "") {
     const query = buildQuery({
       variable,
+      models,
       treatments,
     });
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/obs${query}`);
@@ -256,22 +348,37 @@ export const api = {
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/params/meta${query}`);
   },
 
-  forecastParamsLatest(siteId, model, treatment, variable) {
-    const query = buildQuery({
-      model,
-      treatment,
-      variable,
-    });
+  forecastParamsLatest(siteId, model, treatment, variable, output_type = "") {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        model,
+        treatment,
+        variable,
+        output_type,
+      })
+    );
+
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/params/latest${query}`);
   },
 
-  forecastParamsHistory(siteId, param, models = "", treatments = "", variable = "GPP") {
-    const query = buildQuery({
-      param,
-      models,
-      treatments,
-      variable,
-    });
+  forecastParamsHistory(
+    siteId,
+    param,
+    models = "",
+    treatments = "",
+    variable = "GPP",
+    output_type = ""
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        param,
+        models,
+        treatments,
+        variable,
+        output_type,
+      })
+    );
+
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/params/history${query}`);
   },
 
@@ -282,44 +389,111 @@ export const api = {
       treatments,
       params,
     });
+
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/params/hist${query}`);
   },
 
-  forecastRunParameterSummary(siteId, runId, model, treatment) {
-    const query = buildQuery({ model, treatment });
+  forecastRunParameterSummary(siteId, runId, model, treatment, output_type = "") {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        model,
+        treatment,
+        output_type,
+      })
+    );
+
     return requestJson(
       `/api/forecast/${encodeURIComponent(siteId)}/runs/${encodeURIComponent(runId)}/parameter_summary${query}`
     );
   },
 
-  forecastRunParametersAccepted(siteId, runId, model, treatment) {
-    const query = buildQuery({ model, treatment });
+  forecastRunParametersAccepted(siteId, runId, model, treatment, output_type = "") {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        model,
+        treatment,
+        output_type,
+      })
+    );
+
     return requestJson(
       `/api/forecast/${encodeURIComponent(siteId)}/runs/${encodeURIComponent(runId)}/parameters_accepted${query}`
     );
   },
 
-  forecastRuns(siteId, models = "", treatments = "", variable = "", taskType = "", scheduledTaskId = null, limit = 200) {
-    const query = buildQuery({
-      models,
-      treatments,
-      variable,
-      task_type: taskType,
-      scheduled_task_id: scheduledTaskId,
-      limit,
-    });
+  forecastRuns(
+    siteId,
+    models = "",
+    treatments = "",
+    variable = "",
+    taskType = "",
+    scheduledTaskId = null,
+    output_type = "",
+    limit = 200
+  ) {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        models,
+        treatments,
+        variable,
+        task_type: taskType,
+        scheduled_task_id: scheduledTaskId,
+        output_type,
+        limit,
+      })
+    );
+
     return requestJson(`/api/forecast/${encodeURIComponent(siteId)}/runs${query}`);
   },
 
-  forecastRunTimeseries(siteId, runId, variable, model, treatment) {
-    const query = buildQuery({
-      variable,
-      model,
-      treatment,
-    });
+  forecastRunTimeseries(siteId, runId, variable, model, treatment, output_type = "") {
+    const query = buildQuery(
+      withOutputTypeCompat({
+        variable,
+        model,
+        treatment,
+        output_type,
+      })
+    );
+
     return requestJson(
       `/api/forecast/${encodeURIComponent(siteId)}/runs/${encodeURIComponent(runId)}/timeseries${query}`
     );
+  },
+
+  // -------------------------------------------------------------------
+  // Runs
+  // -------------------------------------------------------------------
+  runArtifacts(token, runId) {
+    return requestJson(`/api/runs/${encodeURIComponent(runId)}/artifacts`, {
+      headers: { ...authHeaders(token) },
+    });
+  },
+
+  runOutputs(token, runId) {
+    return requestJson(`/api/runs/${encodeURIComponent(runId)}/outputs`, {
+      headers: { ...authHeaders(token) },
+    });
+  },
+
+  // runDownloadUrl(runId, { rel_path = "", artifact_id = null, bundle = false } = {}) {
+  //   const query = buildQuery({
+  //     rel_path,
+  //     artifact_id,
+  //     bundle: bundle ? 1 : 0,
+  //   });
+  //   return `/api/runs/${encodeURIComponent(runId)}/download${query}`;
+  // },
+  runDownloadUrl(runId, params = {}) {
+    const query = buildQuery(params || {});
+    return `${window.location.origin}/api/runs/${encodeURIComponent(runId)}/download${query}`;
+  },
+
+  runDelete(token, runId) {
+    return requestJson(`/api/runs/${encodeURIComponent(runId)}`, {
+      method: "DELETE",
+      headers: { ...authHeaders(token) },
+    });
   },
 
   // -------------------------------------------------------------------

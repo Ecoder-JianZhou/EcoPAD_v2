@@ -1,0 +1,32 @@
+{
+  "run_id": "3c623744a3af46eaab9103aa7a6febd8",
+  "scheduled_task_id": null,
+  "site_id": "SPRUCE",
+  "model_id": "TECO-SPRUCE_v2",
+  "task_type": "simulation_without_da",
+  "trigger_type": "manual",
+  "payload": {
+    "name": "test",
+    "site": "SPRUCE",
+    "models": [
+      "TECO-SPRUCE_v2"
+    ],
+    "treatments": [
+      "W0.00_CO2.000"
+    ],
+    "task": "simulation_without_da",
+    "parameters": {
+      "vcmax": 45,
+      "rl0": 0.8,
+      "q10": 2
+    },
+    "da": {},
+    "notes": "",
+    "submitted_by": "admin",
+    "expected_output_types": [
+      "simulation_without_da"
+    ],
+    "output_type": "simulation_without_da",
+    "series_type": "simulation_without_da"
+  }
+}

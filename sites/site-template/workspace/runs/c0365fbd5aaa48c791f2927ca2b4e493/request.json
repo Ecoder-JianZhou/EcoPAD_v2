@@ -1,0 +1,28 @@
+{
+  "run_id": "c0365fbd5aaa48c791f2927ca2b4e493",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "simulate",
+  "trigger_type": "manual",
+  "payload": {
+    "name": "Example · MODEL-template_1 · simulate",
+    "site": "Example",
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "simulate",
+    "parameters": {
+      "vcmax": 45,
+      "rl0": 0.8,
+      "q10": 2
+    },
+    "da": {},
+    "notes": "",
+    "submitted_by": "admin",
+    "series_type": "simulate"
+  }
+}

@@ -6,29 +6,67 @@
   "parameter_outputs": {
     "summary": "summary.json",
     "accepted": "parameters_accepted.csv",
-    "best": "parameters_best.json"
+    "best": "best.json"
   },
 
+  "observations": [
+    {
+      "variable": "GPP",
+      "path": "config/observations/gpp_obs_hr.csv",
+      "time_resolution": "hourly",
+      "unit": "umol m-2 s-1"
+    },
+    {
+      "variable": "ER",
+      "path": "config/observations/er_obs_hr.csv",
+      "time_resolution": "hourly",
+      "unit": "umol m-2 s-1"
+    }
+  ],
+
   "tasks": {
-    "simulate": {
+    "simulation_without_da": {
       "enabled": true,
-      "desc": "Run one deterministic simulation.",
+      "desc": "Run one deterministic simulation without data assimilation.",
+      "requires_observation": false,
+      "output_types": ["simulation_without_da"],
       "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
     },
-    "forecast": {
+
+    "simulation_with_da": {
       "enabled": true,
-      "desc": "Generate forecast outputs.",
-      "command": ["python", "/app/executors/MODEL-template_1_forecast.py", "{run_dir}"]
+      "desc": "Run one deterministic simulation using DA-derived parameters.",
+      "requires_observation": true,
+      "output_types": ["simulation_with_da"],
+      "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
     },
+
+    "forecast_without_da": {
+      "enabled": true,
+      "desc": "Generate forecast outputs without data assimilation.",
+      "requires_observation": false,
+      "output_types": ["forecast_without_da"],
+      "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
+    },
+
+    "forecast_with_da": {
+      "enabled": true,
+      "desc": "Generate forecast outputs using DA-derived parameters.",
+      "requires_observation": true,
+      "output_types": ["forecast_with_da"],
+      "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
+    },
+
     "auto_forecast": {
       "enabled": true,
-      "desc": "Run scheduled forecast generation.",
-      "command": ["python", "/app/executors/MODEL-template_1_auto_forecast.py", "{run_dir}"]
-    },
-    "mcmc": {
-      "enabled": true,
-      "desc": "Run MCMC-based data assimilation.",
-      "command": ["python", "/app/executors/MODEL-template_1_mcmc.py", "{run_dir}"]
+      "desc": "Run auto forecast and produce with-DA and optional without-DA forecast outputs in one run.",
+      "requires_observation": true,
+      "output_types": [
+        "auto_forecast_with_da",
+        "auto_forecast_without_da"
+      ],
+      "default_include_without_da": true,
+      "command": ["python", "/app/executors/MODEL-template_1_simulate.py", "{run_dir}"]
     }
   },
 

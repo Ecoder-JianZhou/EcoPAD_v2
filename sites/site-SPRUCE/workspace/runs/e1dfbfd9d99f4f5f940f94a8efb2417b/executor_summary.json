@@ -1,0 +1,13 @@
+{
+  "run_id": "e1dfbfd9d99f4f5f940f94a8efb2417b",
+  "site_id": "SPRUCE",
+  "model_id": "TECO-SPRUCE_v2",
+  "task_type": "simulation_without_da",
+  "treatments": [
+    "W0.00_CO2.000"
+  ],
+  "output_types": [
+    "simulation_without_da"
+  ],
+  "status": "done"
+}

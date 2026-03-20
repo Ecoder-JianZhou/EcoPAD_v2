@@ -1,0 +1,36 @@
+lat	Longitude	wsmax	wsmin	
+0	0	0	0
+LAIMAX	LAIMIN	rdepth	Rootmax	Stemmax	
+0	0	0	0	0	
+SapR	SapS	SLA	GLmax	GRmax	Gsmax	stom_n	
+0	0	1	1	1	1	0
+a1	Ds0	Vcmx0	extkU	xfang	alpha	
+0	0	1	0	0	0	
+Tau_Leaf	Tau_Wood	Tau_Root	Tau_F	Tau_C	Tau_Micro	Tau_SlowSOM	Tau_Passive	
+1	1	1	1	1	1	1	1
+gddonset	Q10	Rl0	Rs0	Rr0
+1	1	1	1	1
+lat	Longitude	wsmax	wsmin	
+47.50	-93.45	50.0	0.2
+LAIMAX	LAIMIN	rdepth	Rootmax	Stemmax	
+4.0	0.3	100	400	500	
+SapR	SapS	SLA	GLmax	GRmax	Gsmax	stom_n	
+1	0.2	10.	10.	10.	10.	2
+a1	Ds0	Vcmx0	extkU	xfang	alpha	
+8	2000	14.	0.51	0	0.385	
+Tau_Leaf	Tau_Wood	Tau_Root	Tau_F	Tau_C	Tau_Micro	Tau_SlowSOM	Tau_Passive	
+0.5	5.0	0.3	0.1	1.0	0.05	5.0	500.
+gddonset	Q10	Rl0	Rs0	Rr0
+100.	1.0	10.	4.5	10.0
+lat	Longitude	wsmax	wsmin	
+47.50	-93.45	50.0	0.2
+LAIMAX	LAIMIN	rdepth	Rootmax	Stemmax	
+4.0	0.3	100	400	500	
+SapR	SapS	SLA	GLmax	GRmax	Gsmax	stom_n	
+1	0.2	200.	50.	30.	30.	2.
+a1	Ds0	Vcmx0	extkU	xfang	alpha	
+8	2000	180.	0.51	0	0.385	
+Tau_Leaf	Tau_Wood	Tau_Root	Tau_F	Tau_C	Tau_Micro	Tau_SlowSOM	Tau_Passive	
+3.0	800.	2.0	0.5	20.0	0.5	1000.	4000.
+gddonset	Q10	Rl0	Rs0	Rr0
+160.	4.0	45.	10.5	45.0

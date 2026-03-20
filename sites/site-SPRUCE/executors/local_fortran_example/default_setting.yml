@@ -1,0 +1,16 @@
+# setting informations based on EcoPad and individual model.
+
+TECO-SPRUCE:
+  paraFile:    "/input/SPRUCE_pars.txt"
+  forcingFile: "/input/SPRUCE_forcing.txt"
+  obsFile:     "/input/SPRUCE_obs.txt"
+  outputFold:  "/ouput/"
+  treatmeats:
+    elevatedCO2: 380.0 # ppm
+    warming: 0.0
+
+matrix-models:
+  gppFile:
+    daily:     "/input/matrix-models/gpp_d.txt"
+    monthly:   "/input/matrix-models/gpp_m.txt"
+  forcingFile: "/input/SPRUCE_forcing.txt"

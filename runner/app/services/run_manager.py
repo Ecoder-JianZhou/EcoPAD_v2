@@ -30,9 +30,31 @@ ACTIVE_STATUSES = {"queued", "running"}
 ALL_STATUSES = TERMINAL_STATUSES | ACTIVE_STATUSES
 DELETABLE_STATUSES = {"done", "failed", "cancelled"}
 
-ALLOWED_TASK_TYPES = {"simulate", "custom", "auto_forecast", "mcmc", "forecast"}
+ALLOWED_TASK_TYPES = {
+    # current canonical task types
+    "simulation_without_da",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+    "auto_forecast",
+    "custom",
+    # backward compatibility
+    "simulate",
+}
+
 ALLOWED_TRIGGER_TYPES = {"manual", "scheduled", "system"}
 ALLOWED_RETENTION_CLASSES = {"ephemeral", "normal", "published"}
+
+ALLOWED_OUTPUT_TYPES = {
+    "simulation_without_da",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+    "auto_forecast_with_da",
+    "auto_forecast_without_da",
+    # backward compatibility
+    "simulate",
+}
 
 
 # ---------------------------------------------------------------------
@@ -104,36 +126,52 @@ def _normalize_task_type(task_type: str) -> str:
     """
     Validate task type.
     """
-    if task_type not in ALLOWED_TASK_TYPES:
-        raise ValueError(f"Unsupported task_type: {task_type}")
-    return task_type
+    text = str(task_type or "").strip()
+    if text not in ALLOWED_TASK_TYPES:
+        raise ValueError(f"Unsupported task_type: {text}")
+    return text
 
 
 def _normalize_trigger_type(trigger_type: str) -> str:
     """
     Validate trigger type.
     """
-    if trigger_type not in ALLOWED_TRIGGER_TYPES:
-        raise ValueError(f"Unsupported trigger_type: {trigger_type}")
-    return trigger_type
+    text = str(trigger_type or "").strip()
+    if text not in ALLOWED_TRIGGER_TYPES:
+        raise ValueError(f"Unsupported trigger_type: {text}")
+    return text
 
 
 def _normalize_retention_class(retention_class: str) -> str:
     """
     Validate retention class.
     """
-    if retention_class not in ALLOWED_RETENTION_CLASSES:
-        raise ValueError(f"Unsupported retention_class: {retention_class}")
-    return retention_class
+    text = str(retention_class or "").strip()
+    if text not in ALLOWED_RETENTION_CLASSES:
+        raise ValueError(f"Unsupported retention_class: {text}")
+    return text
 
 
 def _normalize_status(status: str) -> str:
     """
     Validate run status.
     """
-    if status not in ALL_STATUSES:
-        raise ValueError(f"Unsupported status: {status}")
-    return status
+    text = str(status or "").strip()
+    if text not in ALL_STATUSES:
+        raise ValueError(f"Unsupported status: {text}")
+    return text
+
+
+def _normalize_output_type(output_type: str) -> str:
+    """
+    Validate artifact/output type used by forecast-facing selectors.
+
+    Stored in metadata_json or manifest-derived catalog logic.
+    """
+    text = str(output_type or "").strip()
+    if text not in ALLOWED_OUTPUT_TYPES:
+        raise ValueError(f"Unsupported output_type: {text}")
+    return text
 
 
 def _csv_or_empty_list(value: list[str] | tuple[str, ...] | None) -> list[str]:
@@ -146,6 +184,24 @@ def _csv_or_empty_list(value: list[str] | tuple[str, ...] | None) -> list[str]:
         if text:
             out.append(text)
     return out
+
+
+def _task_default_output_type(task_type: str) -> str:
+    """
+    Infer default output branch from run task type.
+    """
+    task = str(task_type or "").strip()
+    if task == "simulation_without_da" or task == "simulate":
+        return "simulation_without_da"
+    if task == "simulation_with_da":
+        return "simulation_with_da"
+    if task == "forecast_with_da":
+        return "forecast_with_da"
+    if task == "forecast_without_da":
+        return "forecast_without_da"
+    if task == "auto_forecast":
+        return "auto_forecast_with_da"
+    return ""
 
 
 # ---------------------------------------------------------------------
@@ -270,11 +326,6 @@ async def list_runs(
 ) -> list[dict[str, Any]]:
     """
     List runs with optional filters.
-
-    Optional filter:
-    - scheduled_task_id:
-      Useful when the caller wants all repeated runs generated
-      by the same scheduler entry.
     """
     where: list[str] = []
     params: list[Any] = []
@@ -323,6 +374,7 @@ async def list_runs_catalog(
     treatments: list[str] | None = None,
     variable: str = "",
     task_type: str = "",
+    output_type: str = "",
     scheduled_task_id: int | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
@@ -336,16 +388,20 @@ async def list_runs_catalog(
 
     Rules:
     - only runs with at least one `timeseries` artifact are included
-    - one row is returned per (run, effective_model, treatment)
+    - one row is returned per (run, effective_model, treatment, effective_output_type)
     - if `variable` is provided, only matching series artifacts are considered
     """
     clean_models = _csv_or_empty_list(models)
     clean_treatments = _csv_or_empty_list(treatments)
     clean_variable = str(variable or "").strip()
     clean_task_type = str(task_type or "").strip()
+    clean_output_type = str(output_type or "").strip()
 
     if clean_task_type:
         _normalize_task_type(clean_task_type)
+
+    if clean_output_type:
+        _normalize_output_type(clean_output_type)
 
     where: list[str] = ["r.site_id=?", "ro.artifact_type='timeseries'"]
     params: list[Any] = [site_id]
@@ -380,6 +436,26 @@ async def list_runs_catalog(
         where.append("COALESCE(NULLIF(ro.variable,''), '')=?")
         params.append(clean_variable)
 
+    if clean_output_type:
+        where.append(
+            """
+            COALESCE(
+                NULLIF(json_extract(ro.metadata_json, '$.output_type'), ''),
+                NULLIF(json_extract(ro.metadata_json, '$.series_type'), ''),
+                CASE
+                    WHEN r.task_type='simulate' THEN 'simulation_without_da'
+                    WHEN r.task_type='simulation_without_da' THEN 'simulation_without_da'
+                    WHEN r.task_type='simulation_with_da' THEN 'simulation_with_da'
+                    WHEN r.task_type='forecast_with_da' THEN 'forecast_with_da'
+                    WHEN r.task_type='forecast_without_da' THEN 'forecast_without_da'
+                    WHEN r.task_type='auto_forecast' THEN 'auto_forecast_with_da'
+                    ELSE ''
+                END
+            ) = ?
+            """
+        )
+        params.append(clean_output_type)
+
     sql = f"""
     SELECT
         r.id,
@@ -395,7 +471,20 @@ async def list_runs_catalog(
         r.scheduled_task_id,
         COALESCE(NULLIF(ro.model_id,''), r.model_id) AS catalog_model_id,
         COALESCE(NULLIF(ro.treatment,''), '') AS catalog_treatment,
-        MIN(COALESCE(NULLIF(ro.variable,''), '')) AS catalog_variable
+        MIN(COALESCE(NULLIF(ro.variable,''), '')) AS catalog_variable,
+        COALESCE(
+            NULLIF(json_extract(ro.metadata_json, '$.output_type'), ''),
+            NULLIF(json_extract(ro.metadata_json, '$.series_type'), ''),
+            CASE
+                WHEN r.task_type='simulate' THEN 'simulation_without_da'
+                WHEN r.task_type='simulation_without_da' THEN 'simulation_without_da'
+                WHEN r.task_type='simulation_with_da' THEN 'simulation_with_da'
+                WHEN r.task_type='forecast_with_da' THEN 'forecast_with_da'
+                WHEN r.task_type='forecast_without_da' THEN 'forecast_without_da'
+                WHEN r.task_type='auto_forecast' THEN 'auto_forecast_with_da'
+                ELSE ''
+            END
+        ) AS catalog_output_type
     FROM runs r
     JOIN run_outputs ro
       ON ro.run_id = r.id
@@ -413,7 +502,20 @@ async def list_runs_catalog(
         r.updated_at,
         r.scheduled_task_id,
         COALESCE(NULLIF(ro.model_id,''), r.model_id),
-        COALESCE(NULLIF(ro.treatment,''), '')
+        COALESCE(NULLIF(ro.treatment,''), ''),
+        COALESCE(
+            NULLIF(json_extract(ro.metadata_json, '$.output_type'), ''),
+            NULLIF(json_extract(ro.metadata_json, '$.series_type'), ''),
+            CASE
+                WHEN r.task_type='simulate' THEN 'simulation_without_da'
+                WHEN r.task_type='simulation_without_da' THEN 'simulation_without_da'
+                WHEN r.task_type='simulation_with_da' THEN 'simulation_with_da'
+                WHEN r.task_type='forecast_with_da' THEN 'forecast_with_da'
+                WHEN r.task_type='forecast_without_da' THEN 'forecast_without_da'
+                WHEN r.task_type='auto_forecast' THEN 'auto_forecast_with_da'
+                ELSE ''
+            END
+        )
     ORDER BY COALESCE(r.finished_at, r.updated_at, r.created_at) DESC, r.id DESC
     LIMIT ?
     """
@@ -454,18 +556,6 @@ async def count_runs_for_schedule(schedule_id: int) -> int:
 async def get_schedule_run_stats(schedule_ids: list[int] | tuple[int, ...]) -> dict[int, dict[str, Any]]:
     """
     Return run stats for multiple scheduled task IDs.
-
-    Output example:
-    {
-        1: {
-            "run_count": 12,
-            "active_run_count": 1,
-        },
-        2: {
-            "run_count": 0,
-            "active_run_count": 0,
-        },
-    }
     """
     ids = [int(x) for x in schedule_ids if x is not None]
     if not ids:
@@ -518,12 +608,6 @@ async def set_run_status(
 ) -> dict[str, Any]:
     """
     Generic status transition helper.
-
-    Rules:
-    - terminal runs cannot move back into active states
-    - started_at is only set on first transition into running
-    - finished_at is written whenever the run enters a terminal state
-    - heartbeat_at is refreshed only when requested
     """
     status = _normalize_status(status)
     now = now_iso()
@@ -590,23 +674,14 @@ async def set_run_status(
 
 
 async def mark_run_running(run_id: str) -> dict[str, Any]:
-    """
-    Mark a run as running and refresh heartbeat.
-    """
     return await set_run_status(run_id, status="running", heartbeat=True)
 
 
 async def mark_run_done(run_id: str) -> dict[str, Any]:
-    """
-    Mark a run as successfully finished.
-    """
     return await set_run_status(run_id, status="done")
 
 
 async def mark_run_failed(run_id: str, error_message: str = "") -> dict[str, Any]:
-    """
-    Mark a run as failed with an optional error message.
-    """
     return await set_run_status(
         run_id,
         status="failed",
@@ -615,9 +690,6 @@ async def mark_run_failed(run_id: str, error_message: str = "") -> dict[str, Any
 
 
 async def mark_run_cancelled(run_id: str, error_message: str = "") -> dict[str, Any]:
-    """
-    Mark a run as cancelled with an optional message.
-    """
     return await set_run_status(
         run_id,
         status="cancelled",
@@ -626,9 +698,6 @@ async def mark_run_cancelled(run_id: str, error_message: str = "") -> dict[str, 
 
 
 async def touch_run_heartbeat(run_id: str) -> dict[str, Any]:
-    """
-    Refresh heartbeat for an existing run without changing its status.
-    """
     run = await get_run(run_id)
     if run is None:
         raise ValueError(f"Run not found: {run_id}")
@@ -656,9 +725,6 @@ async def add_run_output(
 ) -> dict[str, Any]:
     """
     Register a single run artifact into run_outputs.
-
-    - model_id matters when one run contains artifacts for multiple models
-    - parameter artifacts are often queried model-by-model
     """
     now = now_iso()
 
@@ -741,10 +807,6 @@ async def get_first_run_output(
 ) -> dict[str, Any] | None:
     """
     Return the first matching artifact for a run.
-
-    Typical use cases:
-    - get the parameter summary artifact for one run
-    - get the posterior samples artifact for one run/model
     """
     db = await get_db()
     try:
@@ -840,6 +902,10 @@ async def replace_run_outputs_from_manifest(
 async def delete_run(run_id: str) -> dict[str, Any]:
     """
     Delete one terminal run safely.
+
+    Notes:
+    - DB rows only. Physical file cleanup should be handled by cleanup service
+      or a dedicated purge action.
     """
     db = await get_db()
     try:
@@ -878,6 +944,14 @@ async def delete_run(run_id: str) -> dict[str, Any]:
             raise ValueError(
                 "This run is referenced by forecast_registry and cannot be deleted."
             )
+
+        await db.execute(
+            """
+            DELETE FROM run_outputs
+            WHERE run_id=?
+            """,
+            (run_id,),
+        )
 
         await db.execute(
             """

@@ -1,0 +1,1 @@
+"latitude","longitude","wsmax","wsmin","LAIMAX","LAIMIN","SapS","SLA","GLmax","GRmax","Gsmax","extkU","alpha","Tau_Leaf","Tau_Wood","Tau_Root","Tau_F","Tau_C","Tau_Micro","Tau_SlowSOM","gddonset","Rl0","r_me","Q10pro","kCH4","Omax","CH4_thre","Tveg","Tpro_me","Toxi"

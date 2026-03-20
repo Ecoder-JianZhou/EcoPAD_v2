@@ -102,9 +102,9 @@ export function VarInfoDot({ varKey, meta, registry }) {
   if (!info && !unit) return null;
 
   const title =
-    info?.full ? `${info.full} (${varKey})` :
-    info?.name ? `${info.name} (${varKey})` :
-    varKey;
+    info?.full ? `${info.full} (${varKey})`
+    : info?.name ? `${info.name} (${varKey})`
+    : varKey;
 
   const description = info?.description || info?.desc || "";
   const note = info?.note || info?.notes || "";
@@ -303,8 +303,8 @@ export function ParamHistoryPlot({ data, showTrt }) {
       const color = colorFromKey(key);
       const rgb = hexToRgb(color);
 
-      const rawTime = s.run_time || s.time || [];
-      const rawY = s.best || s.mean || s.value || [];
+      const rawTime = s.time || s.run_time || [];
+      const rawY = s.mean || s.best || s.value || [];
       const lo = s.q05 || s.lo || [];
       const hi = s.q95 || s.hi || [];
 
@@ -354,7 +354,7 @@ export function ParamHistoryPlot({ data, showTrt }) {
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(255,255,255,0.75)",
       xaxis: {
-        title: { text: "Run time" },
+        title: { text: "Time" },
         showgrid: true,
         gridcolor: "rgba(11,18,32,0.08)",
       },
@@ -387,14 +387,42 @@ export function ParamHistoryPlot({ data, showTrt }) {
 
 function normalizeHistItems(rawHist) {
   const hist = Array.isArray(rawHist) ? rawHist : [];
-
   if (hist.length === 0) return [];
 
-  const hasNestedSeries = hist.some((item) => Array.isArray(item?.series));
-  if (hasNestedSeries) {
-    return hist;
+  // 新结构：
+  // [{ key, param, groups: [...] }]
+  const hasGroups = hist.some((item) => Array.isArray(item?.groups));
+  if (hasGroups) {
+    return hist.map((item) => ({
+      key: item?.key || item?.param || "",
+      param: item?.param || item?.key || "",
+      groups: Array.isArray(item?.groups) ? item.groups : [],
+    }));
   }
 
+  // 旧结构1：
+  // [{ key, param, series: [...] }]
+  const hasNestedSeries = hist.some((item) => Array.isArray(item?.series));
+  if (hasNestedSeries) {
+    return hist.map((item) => ({
+      key: item?.key || item?.param || "",
+      param: item?.param || item?.key || "",
+      groups: (item?.series || []).map((s) => ({
+        label:
+          s?.label ||
+          (s?.run_id
+            ? `${s.model || ""} · ${s.treatment || ""} · ${s.run_id}`
+            : `${s.model || ""} · ${s.treatment || ""}`),
+        model: s?.model || "",
+        treatment: s?.treatment || "",
+        run_id: s?.run_id || "",
+        values: Array.isArray(s?.values) ? s.values : [],
+      })),
+    }));
+  }
+
+  // 旧结构2：
+  // [{ run_id, model, treatment, param, values }]
   const grouped = new Map();
 
   hist.forEach((item) => {
@@ -405,15 +433,18 @@ function normalizeHistItems(rawHist) {
       grouped.set(param, {
         key: param,
         param,
-        series: [],
+        groups: [],
       });
     }
 
-    grouped.get(param).series.push({
+    grouped.get(param).groups.push({
+      label: item?.run_id
+        ? `${item?.model || ""} · ${item?.treatment || ""} · ${item?.run_id}`
+        : `${item?.model || ""} · ${item?.treatment || ""}`,
       model: item?.model || "",
       treatment: item?.treatment || "",
-      values: Array.isArray(item?.values) ? item.values : [],
       run_id: item?.run_id || "",
+      values: Array.isArray(item?.values) ? item.values : [],
     });
   });
 
@@ -502,19 +533,23 @@ export function ParamHistGridPlot({ data, showTrt }) {
         font: { size: 12, color: "rgba(11,18,32,0.92)" },
       });
 
-      (item.series || []).forEach((s) => {
-        const key = `${s.model || ""}||${s.treatment || ""}||${s.run_id || ""}`;
+      (item.groups || []).forEach((g) => {
+        const label =
+          g?.label ||
+          (g?.run_id
+            ? `${g.model || ""} · ${showTrt(g.treatment || "")} · ${g.run_id}`
+            : `${g.model || ""} · ${showTrt(g.treatment || "")}`);
+
+        const key = `${g.model || ""}||${g.treatment || ""}||${g.run_id || ""}`;
         const color = colorFromKey(key);
 
         traces.push({
           type: "histogram",
-          x: s.values || [],
+          x: Array.isArray(g?.values) ? g.values : [],
           nbinsx: 24,
           xaxis: xa,
           yaxis: ya,
-          name: s.run_id
-            ? `${s.model} · ${showTrt(s.treatment)} · ${s.run_id}`
-            : `${s.model} · ${showTrt(s.treatment)}`,
+          name: label,
           marker: { color },
           opacity: 0.38,
         });

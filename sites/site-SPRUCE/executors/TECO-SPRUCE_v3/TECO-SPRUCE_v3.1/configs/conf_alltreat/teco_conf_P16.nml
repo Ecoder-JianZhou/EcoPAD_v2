@@ -1,0 +1,47 @@
+&teco_settings
+    case_name = "run_mcmc_alltreat_P16" ! define the case name
+    do_simu     = True            ! simulation mode
+    do_mcmc     = False                  ! MCMC mode  if true, USE_MCMC must be true
+    do_spinup   = False !True           ! spinup mode if true, USE_SPINUP must be true
+    ! not finished yet
+    do_matrix   = False           ! whether run matrix or not
+    do_restart  = False           ! whether read restart file or not
+    do_s_init   = True           ! whether optimize initial values or not
+
+    ! simulation selections
+    do_obs_zwt   = True
+    do_obs_Tsoil = True
+    do_snow      = True           ! do soil snow process or not
+    do_soilphy   = True           ! do soil physics or not
+    do_EBG       = False           ! run EBG or not based on Ma et al., 2022
+    do_ndep      = False           ! N deposit
+    do_leap      = False           ! judge leap year or not
+    
+    ! output selections
+    do_out_hr   = True
+    do_out_day  = True
+    do_out_mon  = True
+    do_out_yr   = True
+    
+    ! set the input and output path and files
+    inDir             = "inputs/in_alltreat/P16"
+    outDir            = "../outputs"
+
+    ! input files
+    climFile          = "SPRUCE_forcing.txt"
+    waterTableFile    = "watertablefile.txt"
+    snowDepthFile     = "SPRUCE_Snow_Depth_2011-2014.txt"
+    in_restartFile    = "restart.nc"
+    defParamsFile     = "parameters_P16.nml"
+
+    ! set the configure file for MCMC and SPIN-UP
+    mcmc_configfile   = "configs/conf_alltreat/mcmc_conf_P16.nml"
+    spinup_configfile = "spinup_configs.nml"
+/
+
+&exps_settings
+    ! not test yet
+    Ttreat     = 0.                          ! Temperature treatment, warming in air and soil temperature
+    CO2treat   = 0.                          ! CO2 treatmant, up to CO2treat, not add to Ca. CO2
+    N_fert     = 0.                          ! 5.6 ! (11.2 gN m-2 yr-1, in spring, Duke Forest FACE)
+/

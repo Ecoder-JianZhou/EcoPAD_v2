@@ -43,6 +43,7 @@ class ScheduleCreate(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     created_by_user_id: int | None = None
     created_by_username: str = ""
+    run_immediately: bool = True
 
 
 class ScheduleUpdate(BaseModel):
@@ -286,7 +287,11 @@ async def scheduler_run_once(schedule_id: int):
 @router.post("/tasks")
 async def create_scheduled_task(req: ScheduleCreate):
     """
-    Create one scheduled task and reload runtime jobs.
+    Create one scheduled task, reload runtime jobs, and optionally run it once immediately.
+
+    Notes:
+    - run_immediately=True will create a run right away, so the new run appears
+      in runs/jobs views immediately instead of waiting for the next cron tick.
     """
     cron_expr = _validate_cron_expr(req.cron_expr)
     enabled = _normalize_enabled(req.enabled, default=1)
@@ -340,12 +345,23 @@ async def create_scheduled_task(req: ScheduleCreate):
 
     await reload_scheduler_jobs()
 
+    immediate_run: dict[str, Any] | None = None
+    immediate_run_error = ""
+
+    if req.run_immediately and enabled == 1:
+        try:
+            immediate_run = await run_scheduled_task_once(schedule_id)
+        except Exception as ex:
+            immediate_run_error = str(ex)
+
     row = await _get_schedule_row(schedule_id)
     stats_map = await get_schedule_run_stats([schedule_id])
 
     return {
         "ok": True,
         "task": _merge_schedule_stats(row or {}, stats_map.get(schedule_id)),
+        "immediate_run": immediate_run,
+        "immediate_run_error": immediate_run_error,
     }
 
 

@@ -1,0 +1,244 @@
+{
+  "run_id": "2fcb3285ae0a4df5a54b946dc5721f0f",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "simulation_without_da",
+  "trigger_type": "manual",
+  "request": {
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "simulation_without_da",
+    "payload": {
+      "name": "test-simu-without-da",
+      "site": "Example",
+      "models": [
+        "MODEL-template_1"
+      ],
+      "treatments": [
+        "treatment_1"
+      ],
+      "task": "simulation_without_da",
+      "parameters": {
+        "vcmax": 45,
+        "rl0": 0.8,
+        "q10": 2
+      },
+      "da": {},
+      "notes": "",
+      "submitted_by": "admin",
+      "expected_output_types": [
+        "simulation_without_da"
+      ],
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da"
+    },
+    "expected_output_types": [
+      "simulation_without_da"
+    ],
+    "output_type": "simulation_without_da",
+    "series_type": "simulation_without_da",
+    "auto_forecast_options": {
+      "auto_forecast_with_da": null,
+      "auto_forecast_without_da": null
+    }
+  },
+  "execution": {
+    "status": "done"
+  },
+  "outputs": {
+    "index": {
+      "MODEL-template_1": {
+        "treatment_1": {
+          "simulation_without_da": {
+            "GPP": "outputs/MODEL-template_1/treatment_1/simulation_without_da/GPP.json",
+            "ER": "outputs/MODEL-template_1/treatment_1/simulation_without_da/ER.json",
+            "NEE": "outputs/MODEL-template_1/treatment_1/simulation_without_da/NEE.json"
+          }
+        }
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "GPP",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/GPP.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da",
+        "variable": "GPP"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "ER",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/ER.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da",
+        "variable": "ER"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "NEE",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/NEE.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da",
+        "variable": "NEE"
+      }
+    },
+    {
+      "artifact_type": "parameter_summary",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/summary.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da",
+        "parameters": {
+          "vcmax": {
+            "value": 45.0,
+            "accepted_min": 10.0,
+            "accepted_max": 120.0,
+            "mean": 45.0,
+            "median": 44.9,
+            "sd": 3.5,
+            "map": 44.7,
+            "unit": "umol m-2 s-1",
+            "name": "Maximum carboxylation rate"
+          },
+          "rl0": {
+            "value": 0.8,
+            "accepted_min": 0.1,
+            "accepted_max": 3.0,
+            "mean": 0.8,
+            "median": 0.79,
+            "sd": 0.08,
+            "map": 0.78,
+            "unit": "umol m-2 s-1",
+            "name": "Base leaf respiration rate"
+          }
+        }
+      }
+    },
+    {
+      "artifact_type": "parameters_accepted",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/parameters_accepted.csv",
+      "media_type": "text/csv",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da"
+      }
+    },
+    {
+      "artifact_type": "parameter_best",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/best.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da"
+      }
+    }
+  ],
+  "forecast_registry": [
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "GPP",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/GPP.json",
+      "obs_path": "config/observations/gpp_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/GPP.json",
+        "media_type": "application/json",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "ER",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/ER.json",
+      "obs_path": "config/observations/er_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/ER.json",
+        "media_type": "application/json",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "NEE",
+      "output_type": "simulation_without_da",
+      "series_type": "simulation_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/NEE.json",
+      "obs_path": "",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/simulation_without_da/NEE.json",
+        "media_type": "application/json",
+        "output_type": "simulation_without_da",
+        "series_type": "simulation_without_da"
+      },
+      "is_published": 1
+    }
+  ]
+}

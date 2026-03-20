@@ -1382,3 +1382,10 @@ textarea{ resize: vertical; }
   color: var(--muted);
   margin-bottom: 6px;
 }
+
+.chip.active {
+  background: rgba(44, 120, 255, 0.12);
+  border-color: rgba(44, 120, 255, 0.45);
+  color: #1f5fd1;
+  font-weight: 600;
+}

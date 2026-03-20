@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.db import init_db
-from app.api import auth, workflow, forecast, account, admin, setup, scheduler, cleanup
+from app.api import auth, workflow, forecast, account, admin, setup, scheduler, cleanup, runs
 
 
 # ---------------------------------------------------------------------
@@ -97,6 +97,7 @@ app.include_router(forecast.router, prefix="/api/forecast", tags=["forecast"])
 app.include_router(account.router, prefix="/api/account", tags=["account"])
 app.include_router(scheduler.router, prefix="/api/scheduler", tags=["scheduler"])
 app.include_router(cleanup.router, prefix="/api/cleanup", tags=["cleanup"])
+app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 
 # ---------------------------------------------------------------------
 # Static files

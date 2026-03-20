@@ -1,0 +1,103 @@
+{
+  "run_id": "1ae4932d8ad34ea2b904bca09f585f4b",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "trigger_type": "manual",
+  "request": {
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "auto_forecast",
+    "payload": {
+      "name": "test",
+      "site": "Example",
+      "models": [
+        "MODEL-template_1"
+      ],
+      "treatments": [
+        "treatment_1"
+      ],
+      "task": "auto_forecast",
+      "parameters": {
+        "vcmax": 45,
+        "rl0": 0.8,
+        "q10": 2
+      },
+      "da": {
+        "auto_forecast_without_da": true
+      },
+      "notes": "",
+      "submitted_by": "admin",
+      "expected_output_types": [
+        "auto_forecast_with_da",
+        "auto_forecast_without_da"
+      ],
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da"
+    },
+    "expected_output_types": [
+      "auto_forecast_with_da",
+      "auto_forecast_without_da"
+    ],
+    "auto_forecast_options": {
+      "auto_forecast_with_da": true,
+      "auto_forecast_without_da": true
+    }
+  },
+  "execution": {
+    "status": "done"
+  },
+  "outputs": {
+    "index": {
+      "MODEL-template_1": {}
+    }
+  },
+  "artifacts": [
+    {
+      "artifact_type": "parameter_summary",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/summary.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da",
+        "parameters": {
+          "vcmax": {
+            "value": 42.1,
+            "accepted_min": 10.0,
+            "accepted_max": 120.0,
+            "mean": 42.1,
+            "median": 42.0,
+            "sd": 3.5,
+            "map": 41.8,
+            "unit": "umol m-2 s-1",
+            "name": "Maximum carboxylation rate"
+          },
+          "rl0": {
+            "value": 0.92,
+            "accepted_min": 0.1,
+            "accepted_max": 3.0,
+            "mean": 0.92,
+            "median": 0.91,
+            "sd": 0.08,
+            "map": 0.9,
+            "unit": "umol m-2 s-1",
+            "name": "Base leaf respiration rate"
+          }
+        }
+      }
+    }
+  ],
+  "forecast_registry": []
+}

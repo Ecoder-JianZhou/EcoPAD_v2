@@ -1,0 +1,28 @@
+{
+  "run_id": "06c9f5090ae84ca5926085117f809905",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "simulation_with_da",
+  "trigger_type": "manual",
+  "payload": {
+    "name": "simulation with DA",
+    "site": "Example",
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "simulation_with_da",
+    "parameters": {
+      "vcmax": 45,
+      "rl0": 0.8,
+      "q10": 2
+    },
+    "da": {},
+    "notes": "",
+    "submitted_by": "admin",
+    "series_type": "simulation_with_da"
+  }
+}

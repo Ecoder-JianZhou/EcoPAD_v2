@@ -1,0 +1,1 @@
+ day,wcl1,wcl2,wcl3,wcl4,wcl5,wcl6,wcl7,wcl8,wcl9,wcl10,liq_water1,liq_water2,liq_water3,liq_water4,liq_water5, liq_water6,liq_water7,liq_water8,liq_water9,liq_water10,ice1,ice2,ice3,ice4,ice5,ice6,ice7,ice8,ice9,ice10,zwt

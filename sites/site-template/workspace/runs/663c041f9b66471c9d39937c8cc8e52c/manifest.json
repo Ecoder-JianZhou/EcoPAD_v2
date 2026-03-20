@@ -1,0 +1,427 @@
+{
+  "run_id": "663c041f9b66471c9d39937c8cc8e52c",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "trigger_type": "manual",
+  "request": {
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "auto_forecast",
+    "payload": {
+      "name": "test2",
+      "site": "Example",
+      "models": [
+        "MODEL-template_1"
+      ],
+      "treatments": [
+        "treatment_1"
+      ],
+      "task": "auto_forecast",
+      "parameters": {
+        "vcmax": 45,
+        "rl0": 0.8,
+        "q10": 2
+      },
+      "da": {
+        "auto_forecast_without_da": true
+      },
+      "notes": "",
+      "submitted_by": "admin",
+      "expected_output_types": [
+        "auto_forecast_with_da",
+        "auto_forecast_without_da"
+      ],
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da"
+    },
+    "expected_output_types": [
+      "auto_forecast_with_da",
+      "auto_forecast_without_da"
+    ],
+    "output_type": "auto_forecast_with_da",
+    "series_type": "auto_forecast_with_da",
+    "auto_forecast_options": {
+      "auto_forecast_with_da": true,
+      "auto_forecast_without_da": true
+    }
+  },
+  "execution": {
+    "status": "done"
+  },
+  "outputs": {
+    "index": {
+      "MODEL-template_1": {
+        "treatment_1": {
+          "auto_forecast_with_da": {
+            "GPP": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/GPP.json",
+            "ER": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/ER.json",
+            "NEE": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/NEE.json"
+          },
+          "auto_forecast_without_da": {
+            "GPP": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/GPP.json",
+            "ER": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/ER.json",
+            "NEE": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/NEE.json"
+          }
+        }
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "GPP",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/GPP.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da",
+        "variable": "GPP"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "ER",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/ER.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da",
+        "variable": "ER"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "NEE",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/NEE.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da",
+        "variable": "NEE"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "GPP",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/GPP.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da",
+        "variable": "GPP"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "ER",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/ER.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da",
+        "variable": "ER"
+      }
+    },
+    {
+      "artifact_type": "timeseries",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "NEE",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/NEE.json",
+      "media_type": "application/json",
+      "reader": "timeseries_json_auto",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da",
+        "variable": "NEE"
+      }
+    },
+    {
+      "artifact_type": "parameter_summary",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/summary__auto_forecast_with_da.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da",
+        "parameters": {
+          "vcmax": {
+            "value": 42.1,
+            "accepted_min": 10.0,
+            "accepted_max": 120.0,
+            "mean": 42.1,
+            "median": 42.0,
+            "sd": 3.5,
+            "map": 41.8,
+            "unit": "umol m-2 s-1",
+            "name": "Maximum carboxylation rate"
+          },
+          "rl0": {
+            "value": 0.92,
+            "accepted_min": 0.1,
+            "accepted_max": 3.0,
+            "mean": 0.92,
+            "median": 0.91,
+            "sd": 0.08,
+            "map": 0.9,
+            "unit": "umol m-2 s-1",
+            "name": "Base leaf respiration rate"
+          }
+        }
+      }
+    },
+    {
+      "artifact_type": "parameters_accepted",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/parameters_accepted__auto_forecast_with_da.csv",
+      "media_type": "text/csv",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da"
+      }
+    },
+    {
+      "artifact_type": "parameter_best",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/best__auto_forecast_with_da.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da"
+      }
+    },
+    {
+      "artifact_type": "parameter_summary",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/summary__auto_forecast_without_da.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da",
+        "parameters": {
+          "vcmax": {
+            "value": 39.4,
+            "accepted_min": 10.0,
+            "accepted_max": 120.0,
+            "mean": 39.4,
+            "median": 39.3,
+            "sd": 3.5,
+            "map": 39.1,
+            "unit": "umol m-2 s-1",
+            "name": "Maximum carboxylation rate"
+          },
+          "rl0": {
+            "value": 0.97,
+            "accepted_min": 0.1,
+            "accepted_max": 3.0,
+            "mean": 0.97,
+            "median": 0.96,
+            "sd": 0.08,
+            "map": 0.95,
+            "unit": "umol m-2 s-1",
+            "name": "Base leaf respiration rate"
+          }
+        }
+      }
+    },
+    {
+      "artifact_type": "parameters_accepted",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/parameters_accepted__auto_forecast_without_da.csv",
+      "media_type": "text/csv",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da"
+      }
+    },
+    {
+      "artifact_type": "parameter_best",
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "variable": "",
+      "rel_path": "outputs/MODEL-template_1/treatment_1/best__auto_forecast_without_da.json",
+      "media_type": "application/json",
+      "metadata": {
+        "model_id": "MODEL-template_1",
+        "treatment": "treatment_1",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da"
+      }
+    }
+  ],
+  "forecast_registry": [
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "GPP",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/GPP.json",
+      "obs_path": "config/observations/gpp_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/GPP.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "ER",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/ER.json",
+      "obs_path": "config/observations/er_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/ER.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "NEE",
+      "output_type": "auto_forecast_with_da",
+      "series_type": "auto_forecast_with_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/NEE.json",
+      "obs_path": "",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_with_da/NEE.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_with_da",
+        "series_type": "auto_forecast_with_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "GPP",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/GPP.json",
+      "obs_path": "config/observations/gpp_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/GPP.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "ER",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/ER.json",
+      "obs_path": "config/observations/er_obs_hr.csv",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/ER.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da"
+      },
+      "is_published": 1
+    },
+    {
+      "model_id": "MODEL-template_1",
+      "treatment": "treatment_1",
+      "variable": "NEE",
+      "output_type": "auto_forecast_without_da",
+      "series_type": "auto_forecast_without_da",
+      "data_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/NEE.json",
+      "obs_path": "",
+      "source_ref": {
+        "rel_path": "outputs/MODEL-template_1/treatment_1/auto_forecast_without_da/NEE.json",
+        "media_type": "application/json",
+        "output_type": "auto_forecast_without_da",
+        "series_type": "auto_forecast_without_da"
+      },
+      "is_published": 1
+    }
+  ]
+}

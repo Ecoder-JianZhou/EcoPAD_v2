@@ -1,0 +1,14 @@
+{
+  "run_id": "ef04f74e3a3b4788a8d98ff4db9b2114",
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "treatments": [
+    "treatment_1"
+  ],
+  "output_types": [
+    "auto_forecast_with_da",
+    "auto_forecast_without_da"
+  ],
+  "status": "done"
+}

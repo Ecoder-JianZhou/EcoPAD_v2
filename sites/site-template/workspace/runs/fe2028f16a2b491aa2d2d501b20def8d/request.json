@@ -1,0 +1,21 @@
+{
+  "run_id": "fe2028f16a2b491aa2d2d501b20def8d",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "trigger_type": "scheduled",
+  "payload": {
+    "name": "test",
+    "treatments": [
+      "treatment_1"
+    ],
+    "parameters": {
+      "vcmax": 45,
+      "rl0": 0.8,
+      "q10": 2
+    },
+    "da": {},
+    "notes": ""
+  }
+}

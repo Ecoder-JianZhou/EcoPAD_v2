@@ -1,0 +1,3 @@
+# python run.py "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/ecopad_test/sites_data/SPRUCE/setting.yml" "TECO_SPRUCE" "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/test/test_1"
+# python run.py "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/ecopad_test/sites_data/SPRUCE/setting.yml" "matrix_models" "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/test/test_1"
+python run.py "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/ecopad_test/sites_data/SPRUCE/setting.yml" "all" "/mnt/c/Users/jz964/Documents/Ubuntu_docs/ecopad_docs/3_devEcopad_zj/data/test/test_3"

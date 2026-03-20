@@ -1,0 +1,49 @@
+{
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "n_accepted": 200,
+  "parameters": [
+    {
+      "id": "vcmax",
+      "name": "Maximum carboxylation rate",
+      "label": "Maximum carboxylation rate",
+      "unit": "umol m-2 s-1",
+      "default": 45.0,
+      "min": 10.0,
+      "max": 120.0,
+      "desc": "Maximum Rubisco carboxylation capacity",
+      "value": 55.204895,
+      "mean": 45.083574,
+      "accepted_min": 28.737212,
+      "accepted_max": 60.974526
+    },
+    {
+      "id": "rl0",
+      "name": "Base leaf respiration rate",
+      "label": "Base leaf respiration rate",
+      "unit": "umol m-2 s-1",
+      "default": 0.8,
+      "min": 0.1,
+      "max": 3.0,
+      "desc": "Base respiration rate of leaves",
+      "value": 1.226334,
+      "mean": 0.797723,
+      "accepted_min": 0.380459,
+      "accepted_max": 1.226334
+    },
+    {
+      "id": "q10",
+      "name": "Temperature sensitivity of respiration",
+      "label": "Temperature sensitivity of respiration",
+      "unit": "-",
+      "default": 2.0,
+      "min": 1.2,
+      "max": 3.5,
+      "desc": "Respiration temperature sensitivity",
+      "value": 2.338127,
+      "mean": 1.998194,
+      "accepted_min": 1.667261,
+      "accepted_max": 2.338127
+    }
+  ]
+}

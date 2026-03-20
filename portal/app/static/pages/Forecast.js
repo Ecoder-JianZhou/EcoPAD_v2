@@ -13,6 +13,8 @@ import {
 } from "../components/plots.js";
 
 const HIST_PARAM_MAX = 9;
+const FORECAST_MODE_OPTIONS = ["forecast_with_da", "forecast_without_da"];
+const AUTO_FORECAST_PARAM_MODE = "auto_forecast_with_da";
 
 // ---------------------------------------------------------------------
 // Small helpers
@@ -29,6 +31,10 @@ function hasNonEmptySeries(series) {
   return (series || []).some((s) => (s.time || []).length > 0);
 }
 
+function hasObsPoints(data) {
+  return Array.isArray(data?.points) && data.points.length > 0;
+}
+
 function parseSeriesKey(key) {
   if (!key) return { model: "", treatment: "" };
 
@@ -36,35 +42,110 @@ function parseSeriesKey(key) {
     const parts = key.split("·").map((x) => x.trim());
     return { model: parts[0] || "", treatment: parts[1] || "" };
   }
+
   if (key.includes("||")) {
     const parts = key.split("||").map((x) => x.trim());
     return { model: parts[0] || "", treatment: parts[1] || "" };
   }
+
   return { model: key, treatment: "" };
 }
 
-function toSimData(data) {
+function forecastModeLabel(v) {
+  if (v === "forecast_with_da") return "Forecast with DA";
+  if (v === "forecast_without_da") return "Forecast without DA";
+  if (v === "auto_forecast_with_da") return "Auto Forecast with DA";
+  if (v === "auto_forecast_without_da") return "Auto Forecast without DA";
+  if (v === "simulation_with_da") return "Simulation with DA";
+  if (v === "simulation_without_da" || v === "simulate") return "Simulation without DA";
+  return v || "";
+}
+
+function expandForecastModesToRunOutputTypes(modes = []) {
+  const out = [];
+  const seen = new Set();
+
+  function add(v) {
+    const s = String(v || "").trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  }
+
+  (modes || []).forEach((mode) => {
+    if (mode === "forecast_with_da") {
+      add("forecast_with_da");
+      add("auto_forecast_with_da");
+      return;
+    }
+
+    if (mode === "forecast_without_da") {
+      add("forecast_without_da");
+      add("auto_forecast_without_da");
+      return;
+    }
+
+    add(mode);
+  });
+
+  return out;
+}
+
+function toSimData(data, outputType = "forecast_with_da") {
   const series = (data?.series || []).map((s) => {
     const parsed = parseSeriesKey(s.key || "");
     return {
-      key: s.key || `${s.model || parsed.model}||${s.treatment || parsed.treatment}`,
+      key: `${s.key || `${s.model || parsed.model}||${s.treatment || parsed.treatment}`}||${outputType}`,
       model: s.model || parsed.model,
       treatment: s.treatment || parsed.treatment,
-      run_id: s.run_id || "",
-      run_label: s.run_label || "",
+      run_id: s.run_id || s.source_run_id || "",
+      run_label: s.run_label || forecastModeLabel(outputType),
+      output_type: outputType,
+      series_type: outputType,
       time: s.time || [],
       mean: s.mean || [],
       q05: s.lo || s.q05 || [],
       q95: s.hi || s.q95 || [],
     };
   });
-  return { units: data?.units || "", series };
+
+  return {
+    units: data?.units || "",
+    series,
+  };
+}
+
+function normalizeObsData(raw) {
+  if (!raw) return { points: [] };
+
+  if (Array.isArray(raw?.points)) {
+    return { points: raw.points };
+  }
+
+  const time = Array.isArray(raw?.time) ? raw.time : [];
+  const value = Array.isArray(raw?.value) ? raw.value : [];
+  const std = Array.isArray(raw?.std) ? raw.std : [];
+  const treatment = raw?.treatment || "";
+  const model = raw?.model || "";
+
+  const n = Math.min(time.length, value.length);
+  const points = [];
+
+  for (let i = 0; i < n; i += 1) {
+    points.push({
+      model,
+      time: time[i],
+      value: value[i],
+      std: std[i] ?? null,
+      treatment,
+    });
+  }
+
+  return { points };
 }
 
 // ---------------------------------------------------------------------
 // Time helpers
-// Keep time display stable with backend/system string.
-// Do not convert timezone using browser local Date rendering.
 // ---------------------------------------------------------------------
 function pickRunRawTime(run) {
   if (!run) return "";
@@ -129,29 +210,8 @@ function buildRunTooltip(run) {
     `Trigger: ${run.triggered_by || "—"}`,
     `Model: ${run.model_id || "—"}`,
     `Treatment: ${run.treatment || "—"}`,
+    `Output type: ${run.output_type || run.series_type || "—"}`,
   ].join("\n");
-}
-
-function findParamEntry(summary, paramId) {
-  const params = summary?.summary?.parameters || summary?.parameters || [];
-  if (!Array.isArray(params)) return null;
-  return params.find((p) => String(p?.id || "") === String(paramId || "")) || null;
-}
-
-function findParamEntries(summary, ids = []) {
-  const params = summary?.summary?.parameters || summary?.parameters || [];
-  if (!Array.isArray(params) || !Array.isArray(ids) || ids.length === 0) return [];
-  const wanted = new Set(ids.map((x) => String(x)));
-  return params.filter((p) => wanted.has(String(p?.id || "")));
-}
-
-function metricRow(e, label, value) {
-  return e(
-    "div",
-    { className: "wf-sel-row" },
-    e("div", { className: "wf-sel-k muted" }, label),
-    e("div", { className: "wf-sel-v" }, value ?? "—")
-  );
 }
 
 function intersectArrays(arrays) {
@@ -181,11 +241,12 @@ function normalizeRunOptions(rows = []) {
   const normalized = (rows || []).map((row) => {
     const rawTime = pickRunRawTime(row);
     const label = formatDateTimeStable(rawTime) || String(row?.run_id || "");
-
     return {
       ...row,
       _raw_time: rawTime,
       label,
+      output_type: row?.output_type || row?.series_type || "",
+      series_type: row?.output_type || row?.series_type || "",
     };
   });
 
@@ -205,34 +266,53 @@ function normalizeRunOptions(rows = []) {
 function optionLabel(run) {
   if (!run) return "";
   const latest = run.is_latest_published ? " · latest" : "";
-  return `${getRunDisplayTime(run) || run.run_id || ""}${latest}`;
+  const ot = run.output_type || run.series_type || "";
+  const mode = ot ? ` · ${forecastModeLabel(ot)}` : "";
+  return `${getRunDisplayTime(run) || run.run_id || ""}${mode}${latest}`;
 }
 
-function pickRunRows(options = [], selectedIds = []) {
-  const wanted = new Set((selectedIds || []).map((x) => String(x)));
-  return (options || []).filter((x) => wanted.has(String(x?.run_id || "")));
+function pickRunRows(options = [], selectedKeys = []) {
+  const wanted = new Set((selectedKeys || []).map((x) => String(x)));
+  return (options || []).filter((x) => {
+    const key = `${x?.run_id || ""}||${x?.output_type || x?.series_type || ""}`;
+    return wanted.has(key);
+  });
 }
 
 function buildParamHistFromAccepted(results, params) {
-  const hist = [];
+  const byParam = new Map();
+
+  function ensureParam(paramId) {
+    if (!byParam.has(paramId)) {
+      byParam.set(paramId, {
+        key: paramId,
+        param: paramId,
+        groups: [],
+      });
+    }
+    return byParam.get(paramId);
+  }
 
   (results || []).forEach((item) => {
     (params || []).forEach((paramId) => {
       const values = toNumberArray(item.rows || [], paramId);
       if (values.length === 0) return;
 
-      hist.push({
-        key: `${item.run_id} · ${item.model} · ${item.treatment} · ${paramId}`,
+      const bucket = ensureParam(paramId);
+      bucket.groups.push({
+        key: `${item.run_id}||${item.model}||${item.treatment}`,
         run_id: item.run_id,
         model: item.model,
         treatment: item.treatment,
-        param: paramId,
+        label: `${item.model} · ${item.treatment} · ${item.run_id}`,
         values,
       });
     });
   });
 
-  return { hist };
+  return {
+    hist: Array.from(byParam.values()),
+  };
 }
 
 function normalizeHistoryForPlot(data, selectedModels = [], selectedTreatments = []) {
@@ -265,11 +345,13 @@ function normalizeHistoryForPlot(data, selectedModels = [], selectedTreatments =
     const treatment = String(row?.treatment || fallbackTreatment || "");
 
     if (
-      (row?.time || row?.run_time || row?.updated_at || row?.run_finished_at) &&
+      (row?.time || row?.data_time || row?.analysis_time || row?.run_time || row?.updated_at || row?.run_finished_at) &&
       row?.value !== undefined
     ) {
       const timeValue = String(
-        row?.time ||
+        row?.data_time ||
+          row?.analysis_time ||
+          row?.time ||
           row?.run_time ||
           row?.updated_at ||
           row?.run_finished_at ||
@@ -362,17 +444,18 @@ function RunMultiSelect({ options = [], selected = [], onChange, size = 6 }) {
         onChange(values);
       },
     },
-    (options || []).map((item) =>
-      e(
+    (options || []).map((item) => {
+      const key = `${item.run_id}||${item.output_type || item.series_type || ""}`;
+      return e(
         "option",
         {
-          key: item.run_id,
-          value: item.run_id,
+          key,
+          value: key,
           title: buildRunTooltip(item),
         },
         optionLabel(item)
-      )
-    )
+      );
+    })
   );
 }
 
@@ -388,9 +471,9 @@ function renderSelectedRunInline(e, rows = []) {
         style: { marginTop: 6, whiteSpace: "pre-wrap" },
         title: buildRunTooltip(row),
       },
-      `Selected: ${getRunDisplayTime(row) || row.run_id || "—"} · ${row.status || "—"} · ${
-        row.username || row.user || row.created_by || "unknown user"
-      }`
+      `Selected: ${getRunDisplayTime(row) || row.run_id || "—"} · ${forecastModeLabel(
+        row.output_type || row.series_type
+      )} · ${row.status || "—"} · ${row.username || row.user || row.created_by || "unknown user"}`
     );
   }
 
@@ -528,6 +611,7 @@ export function Forecast() {
   const [simLoading, setSimLoading] = React.useState(false);
   const [paramsLoading, setParamsLoading] = React.useState(false);
   const [summaryLoading, setSummaryLoading] = React.useState(false);
+  const [obsLoading, setObsLoading] = React.useState(false);
 
   const [sitesError, setSitesError] = React.useState("");
   const [metaError, setMetaError] = React.useState("");
@@ -542,6 +626,8 @@ export function Forecast() {
   const [variable, setVariable] = React.useState("GPP");
   const [models, setModels] = React.useState([]);
   const [treatments, setTreatments] = React.useState([]);
+  const [forecastModes, setForecastModes] = React.useState(["forecast_with_da"]);
+  const [showObs, setShowObs] = React.useState(true);
   const [simData, setSimData] = React.useState(null);
   const [obsData, setObsData] = React.useState({ points: [] });
 
@@ -722,6 +808,7 @@ export function Forecast() {
       setSimRuns([]);
       return;
     }
+
     if (models.length === 0 || treatments.length === 0) {
       setSimRunOptions([]);
       setSimRuns([]);
@@ -729,13 +816,45 @@ export function Forecast() {
     }
 
     let cancelled = false;
+    const activeModes = forecastModes.length ? forecastModes : ["forecast_with_da"];
+    const queryOutputTypes = expandForecastModesToRunOutputTypes(activeModes);
 
-    api.forecastRuns(site, models.join(","), treatments.join(","), variable, "", null, 200)
-      .then((j) => {
+    Promise.all(
+      queryOutputTypes.map((mode) =>
+        api
+          .forecastRuns(site, models.join(","), treatments.join(","), variable, "", null, mode, 200)
+          .then((j) =>
+            (j?.runs || []).map((r) => ({
+              ...r,
+              output_type: r.output_type || r.series_type || mode,
+              series_type: r.output_type || r.series_type || mode,
+            }))
+          )
+          .catch(() => [])
+      )
+    )
+      .then((parts) => {
         if (cancelled) return;
-        const rows = normalizeRunOptions(j?.runs || []);
+
+        const merged = parts.flat();
+        const seen = new Set();
+
+        const rows = normalizeRunOptions(
+          merged.filter((r) => {
+            const key = `${r.run_id}||${r.model_id}||${r.treatment}||${r.output_type || r.series_type}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+        );
+
         setSimRunOptions(rows);
-        setSimRuns((prev) => (prev || []).filter((x) => rows.some((r) => r.run_id === x)));
+
+        setSimRuns((prev) =>
+          (prev || []).filter((x) =>
+            rows.some((r) => `${r.run_id}||${r.output_type || r.series_type || ""}` === x)
+          )
+        );
       })
       .catch(() => {
         if (!cancelled) {
@@ -747,7 +866,7 @@ export function Forecast() {
     return () => {
       cancelled = true;
     };
-  }, [site, view, variable, models, treatments]);
+  }, [site, view, variable, models, treatments, forecastModes]);
 
   React.useEffect(() => {
     if (!site || !variable) return;
@@ -762,13 +881,44 @@ export function Forecast() {
     setSimLoading(true);
     setSimError("");
 
+    const activeModes = forecastModes.length ? forecastModes : ["forecast_with_da"];
     const selectedRunRows = pickRunRows(simRunOptions, simRuns);
 
     if (selectedRunRows.length === 0) {
-      api.forecastData(site, variable, models.join(","), treatments.join(","))
-        .then((d) => {
+      Promise.all(
+        activeModes.map((mode) =>
+          api
+            .forecastData(site, variable, models.join(","), treatments.join(","), mode, false)
+            .then((d) => ({ mode, data: d || null }))
+            .catch(() => null)
+        )
+      )
+        .then((results) => {
           if (cancelled) return;
-          setSimData(toSimData(d));
+
+          let unitsOut = "";
+          const seriesOut = [];
+
+          (results || []).filter(Boolean).forEach((item) => {
+            const mode = item?.mode;
+            const d = item?.data;
+            if (!d) return;
+
+            const normalized = toSimData(d, mode);
+            if (normalized.units && !unitsOut) unitsOut = normalized.units;
+
+            (normalized.series || []).forEach((s) => {
+              seriesOut.push({
+                ...s,
+                key: `${s.key}||${mode}`,
+                run_label: forecastModeLabel(mode),
+                output_type: mode,
+                series_type: mode,
+              });
+            });
+          });
+
+          setSimData({ units: unitsOut, series: seriesOut });
         })
         .catch(() => {
           if (cancelled) return;
@@ -781,7 +931,15 @@ export function Forecast() {
     } else {
       Promise.all(
         selectedRunRows.map((row) =>
-          api.forecastRunTimeseries(site, row.run_id, variable, row.model_id, row.treatment)
+          api
+            .forecastRunTimeseries(
+              site,
+              row.run_id,
+              variable,
+              row.model_id,
+              row.treatment,
+              row.output_type || row.series_type || "forecast_with_da"
+            )
             .then((d) => ({ row, data: d || null }))
             .catch(() => null)
         )
@@ -804,12 +962,16 @@ export function Forecast() {
             const siteUnits = String(siteData?.units || "");
             if (siteUnits && !unitsOut) unitsOut = siteUnits;
 
+            const outputType = row.output_type || row.series_type || "";
+
             seriesOut.push({
-              key: `${row.run_id}||${row.model_id}||${row.treatment}`,
-              model: `${row.model_id} @ ${getRunDisplayTime(row)}`,
+              key: `${row.run_id}||${row.model_id}||${row.treatment}||${outputType}`,
+              model: `${row.model_id} @ ${getRunDisplayTime(row)} · ${forecastModeLabel(outputType)}`,
               treatment: row.treatment,
               run_id: row.run_id,
-              run_label: getRunDisplayTime(row),
+              run_label: `${getRunDisplayTime(row)} · ${forecastModeLabel(outputType)}`,
+              output_type: outputType,
+              series_type: outputType,
               time: first.time || [],
               mean: first.mean || [],
               q05: first.lo || first.q05 || [],
@@ -829,23 +991,26 @@ export function Forecast() {
         });
     }
 
-    api.forecastObs(site, variable, treatments.join(","))
+    setObsLoading(true);
+    api.forecastObs(site, variable, models.join(","), treatments.join(","))
       .then((j) => {
         if (cancelled) return;
-        setObsData(j || { points: [] });
+        setObsData(normalizeObsData(j));
       })
       .catch(() => {
         if (!cancelled) setObsData({ points: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setObsLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [site, variable, models, treatments, simRunOptions, simRuns]);
+  }, [site, variable, models, treatments, forecastModes, simRunOptions, simRuns]);
 
   React.useEffect(() => {
-    if (!site) return;
-    if (view !== "params") return;
+    if (!site || view !== "params") return;
 
     const ms = meta?.models || [];
     const ts = meta?.treatments || [];
@@ -872,8 +1037,7 @@ export function Forecast() {
   }, [site, view, meta]);
 
   React.useEffect(() => {
-    if (!site) return;
-    if (view !== "params") return;
+    if (!site || view !== "params") return;
 
     if (!pModels || pModels.length === 0) {
       setPMetaByModel({});
@@ -965,21 +1129,41 @@ export function Forecast() {
 
     let cancelled = false;
 
-    api.forecastRuns(site, hModels.join(","), histTreatment, variable || "GPP", "auto_forecast", null, 200)
+    api.forecastRuns(
+      site,
+      hModels.join(","),
+      histTreatment,
+      variable || "GPP",
+      "auto_forecast",
+      null,
+      AUTO_FORECAST_PARAM_MODE,
+      200
+    )
       .then((j) => {
         if (cancelled) return;
 
-        const rows = normalizeRunOptions(j?.runs || []);
+        const rows = normalizeRunOptions(
+          (j?.runs || []).map((r) => ({
+            ...r,
+            output_type: r.output_type || r.series_type || AUTO_FORECAST_PARAM_MODE,
+            series_type: r.output_type || r.series_type || AUTO_FORECAST_PARAM_MODE,
+          }))
+        );
+
         setHistRunOptions(rows);
 
         setHRuns((prev) => {
-          const keep = (prev || []).filter((x) => rows.some((r) => r.run_id === x));
+          const keep = (prev || []).filter((x) =>
+            rows.some((r) => `${r.run_id}||${r.output_type || r.series_type || ""}` === x)
+          );
           if (keep.length) return keep;
 
           const latestRow = rows.find((r) => r.is_latest_published);
-          if (latestRow?.run_id) return [latestRow.run_id];
+          if (latestRow?.run_id) {
+            return [`${latestRow.run_id}||${latestRow.output_type || latestRow.series_type || ""}`];
+          }
 
-          return firstAsArray(rows.map((r) => r.run_id));
+          return firstAsArray(rows.map((r) => `${r.run_id}||${r.output_type || r.series_type || ""}`));
         });
       })
       .catch(() => {
@@ -1007,7 +1191,15 @@ export function Forecast() {
     setParamsLoading(true);
     setParamsError("");
 
-    api.forecastParamsHistory(site, pParam, pModels.join(","), pTreatments.join(","), variable || "GPP")
+    api
+      .forecastParamsHistory(
+        site,
+        pParam,
+        pModels.join(","),
+        pTreatments.join(","),
+        variable || "GPP",
+        AUTO_FORECAST_PARAM_MODE
+      )
       .then((j) => {
         if (cancelled) return;
         setPHistory(normalizeHistoryForPlot(j, pModels, pTreatments));
@@ -1041,10 +1233,14 @@ export function Forecast() {
     setParamsError("");
 
     const requests = [];
-    (hRuns || []).forEach((runId) => {
+    (hRuns || []).forEach((runKey) => {
+      const [runId, outputTypeRaw] = String(runKey || "").split("||");
+      const outputType = outputTypeRaw || AUTO_FORECAST_PARAM_MODE;
+
       hModels.forEach((modelId) => {
         requests.push(
-          api.forecastRunParametersAccepted(site, runId, modelId, histTreatment)
+          api
+            .forecastRunParametersAccepted(site, runId, modelId, histTreatment, outputType)
             .then((j) => ({
               run_id: runId,
               model: modelId,
@@ -1076,6 +1272,10 @@ export function Forecast() {
     };
   }, [view, site, pTab, hRuns, hModels, hTreatments, hParams]);
 
+  const obsAvailableForSelection = React.useMemo(() => {
+    return hasObsPoints(obsData);
+  }, [obsData]);
+
   const labels = meta?.treatment_labels || {};
   const showTrt = (k) => (labels && labels[k] ? labels[k] : k || "");
 
@@ -1091,7 +1291,7 @@ export function Forecast() {
   const hasSimOptions = (meta?.variables || []).length > 0;
   const hasSelection = site && variable && models.length > 0 && treatments.length > 0;
   const hasSeries = hasNonEmptySeries(simData?.series);
-  const hasObs = (obsData?.points || []).length > 0;
+  const hasObs = showObs && obsAvailableForSelection;
   const hasAnyData = hasSeries || hasObs;
   const hasParamsData = pModels.length > 0 && commonParams.length > 0 && pTreatments.length > 0;
 
@@ -1152,6 +1352,7 @@ export function Forecast() {
                 e(VarInfoDot, { varKey: variable, registry: varReg })
               )
             ),
+
             e(
               "div",
               { className: "ctrl" },
@@ -1163,6 +1364,7 @@ export function Forecast() {
                 max: 10,
               })
             ),
+
             e(
               "div",
               { className: "ctrl" },
@@ -1174,6 +1376,62 @@ export function Forecast() {
                 max: 20,
               })
             ),
+
+            e(
+              "div",
+              { className: "ctrl" },
+              e("label", null, "Forecast modes"),
+              e(MultiSelect, {
+                options: FORECAST_MODE_OPTIONS,
+                selected: forecastModes,
+                onChange: setForecastModes,
+                max: 2,
+              })
+            ),
+
+            e(
+              "div",
+              { className: "ctrl" },
+              e(
+                "label",
+                {
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  },
+                },
+                e("span", null, "Observation"),
+                !obsLoading && !obsAvailableForSelection
+                  ? e(
+                      "span",
+                      {
+                        className: "muted",
+                        style: {
+                          fontSize: 12,
+                          color: "#999",
+                          whiteSpace: "nowrap",
+                        },
+                      },
+                      "No data available"
+                    )
+                  : null
+              ),
+              e(
+                "div",
+                {
+                  className: "chips",
+                  style: {
+                    opacity: obsLoading || obsAvailableForSelection ? 1 : 0.5,
+                    pointerEvents: obsLoading || obsAvailableForSelection ? "auto" : "none",
+                  },
+                },
+                chip("Show", (obsLoading || obsAvailableForSelection) && showObs, () => setShowObs(true)),
+                chip("Hide", (obsLoading || obsAvailableForSelection) && !showObs, () => setShowObs(false))
+              )
+            ),
+
             e(
               "div",
               { className: "ctrl" },
@@ -1352,6 +1610,7 @@ export function Forecast() {
       metaLoading ? e("div", { className: "muted" }, "Loading metadata...") : null,
       metaError ? e("div", { className: "muted" }, metaError) : null,
       view === "sim" && simLoading ? e("div", { className: "muted" }, "Loading simulations...") : null,
+      view === "sim" && obsLoading ? e("div", { className: "muted" }, "Loading observations...") : null,
       view === "sim" && simError ? e("div", { className: "muted" }, simError) : null,
       view === "params" && paramsLoading ? e("div", { className: "muted" }, "Loading parameters...") : null,
       view === "params" && paramsError ? e("div", { className: "muted" }, paramsError) : null,
@@ -1403,11 +1662,13 @@ export function Forecast() {
                 : hasAnyData
                   ? e(SimPlot, {
                       simData: simData || { series: [], units: "" },
-                      obsData: obsData || { points: [] },
+                      obsData: showObs && obsAvailableForSelection
+                        ? (obsData || { points: [] })
+                        : { points: [] },
                       units,
                       showTrt,
                     })
-                  : simLoading
+                  : simLoading || obsLoading
                     ? e("div", { className: "muted", style: { padding: "12px" } }, "Loading...")
                     : e("div", { className: "muted", style: { padding: "12px" } }, "No Data")
           )

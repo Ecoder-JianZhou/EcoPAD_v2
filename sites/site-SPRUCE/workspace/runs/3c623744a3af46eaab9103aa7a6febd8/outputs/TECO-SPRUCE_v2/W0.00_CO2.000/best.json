@@ -1,0 +1,25 @@
+{
+  "run_id": "3c623744a3af46eaab9103aa7a6febd8",
+  "site_id": "SPRUCE",
+  "model_id": "TECO-SPRUCE_v2",
+  "task_type": "simulation_without_da",
+  "output_type": "simulation_without_da",
+  "treatment": "W0.00_CO2.000",
+  "parameter_count": 2,
+  "parameters": [
+    {
+      "id": "vcmax",
+      "name": "Maximum carboxylation rate",
+      "label": "Maximum carboxylation rate",
+      "unit": "umol m-2 s-1",
+      "value": 45.0
+    },
+    {
+      "id": "rl0",
+      "name": "Base leaf respiration rate",
+      "label": "Base leaf respiration rate",
+      "unit": "umol m-2 s-1",
+      "value": 0.8
+    }
+  ]
+}

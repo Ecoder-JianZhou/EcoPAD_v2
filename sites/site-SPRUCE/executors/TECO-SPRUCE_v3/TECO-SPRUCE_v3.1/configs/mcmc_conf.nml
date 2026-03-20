@@ -1,0 +1,631 @@
+&nml_mcmc_settings
+    mcset%nDAsimu       = 100
+    mcset%search_scale  = 0.02
+    mcset%ncov          = 50000
+    mcset%nRand         = 5
+    mcset%do_mc_out_hr  = False
+    mcset%do_mc_out_day = True
+    mcset%do_mc_out_mon = False
+    mcset%do_mc_out_yr  = False
+/
+
+&obsFiles
+    mcObsFiles%BNPP         = "obsfile_BNPP_y.txt"
+    mcObsFiles%ANPPshrub    = "obsfile_Shrub_ANPP_y.txt"
+    mcObsFiles%BNPPshrub    = "obsfile_Shrub_BNPP_y.txt"
+    mcObsFiles%PhotoShrub   = "obsfile_Shrub_Photo_h.txt"
+    mcObsFiles%cLeafShrub   = "obsfile_Shrub_cLeaf_y.txt"
+    mcObsFiles%cStemShrub   = "obsfile_Shrub_cStem_y.txt"
+    mcObsFiles%NPPsphag     = "obsfile_Sphag_NPP_y.txt"
+    mcObsFiles%cPlantSphag  = "obsfile_Sphag_cPlant_y.txt"
+    mcObsFiles%ANPPtree     = "obsfile_Tree_ANPP_y.txt"
+    mcObsFiles%BNPPtree     = "obsfile_Tree_BNPP_y.txt"
+    mcObsFiles%LAItree      = "obsfile_Tree_LAI_h.txt"
+    mcObsFiles%PhotoTree    = "obsfile_Tree_Photo_h.txt"
+    mcObsFiles%cPlantTree   = "obsfile_Tree_PlantC_y.txt"
+    mcObsFiles%cSoil        = "obsfile_cSoil_y.txt"
+    mcObsFiles%CH4          = "obsfile_ch4_h.txt"
+    mcObsFiles%ER           = "obsfile_er_h.txt"
+    mcObsFiles%GPP          = "obsfile_gpp_h.txt"
+    mcObsFiles%NEE          = "obsfile_nee_h.txt"
+    mcObsFiles%RH           = "obsfile_rh_h.txt"
+/
+
+&siteDAParams         !name, default value,  minmum,        maximum
+  st( 1)%parName = "wsmax",           st( 1)%parVal =   85.89000, st( 1)%parMin =   70.30000, st( 1)%parMax =   95.30000
+  st( 2)%parName = "wsmin",           st( 2)%parVal =    0.20000, st( 2)%parMin =    0.20000, st( 2)%parMax =    0.20000
+  st( 3)%parName = "extkU",           st( 3)%parVal =    0.51000, st( 3)%parMin =    0.51000, st( 3)%parMax =    0.51000
+  st( 4)%parName = "Tau_F",           st( 4)%parVal =    0.89180, st( 4)%parMin =    0.10000, st( 4)%parMax =    3.00000
+  st( 5)%parName = "Tau_C",           st( 5)%parVal =    5.68900, st( 5)%parMin =    1.00000, st( 5)%parMax =   20.00000
+  st( 6)%parName = "Tau_Micro",       st( 6)%parVal =    0.16300, st( 6)%parMin =    0.05000, st( 6)%parMax =    0.80000
+  st( 7)%parName = "Tau_SlowSOM",     st( 7)%parVal =   22.78000, st( 7)%parMin =    5.00000, st( 7)%parMax =  150.00000
+  st( 8)%parName = "Tau_Passive",     st( 8)%parVal =  613.40000, st( 8)%parMin =  300.00000, st( 8)%parMax = 4000.00000
+  st( 9)%parName = "Q10rh",           st( 9)%parVal =    6.09300, st( 9)%parMin =    1.00000, st( 9)%parMax =    8.00000
+  st(10)%parName = "etaW",            st(10)%parVal =    0.15000, st(10)%parMin =    0.15000, st(10)%parMax =    0.15000
+  st(11)%parName = "f_F2M",           st(11)%parVal =    0.45390, st(11)%parMin =    0.35000, st(11)%parMax =    0.60000
+  st(12)%parName = "f_C2M",           st(12)%parVal =    0.27480, st(12)%parMin =    0.25000, st(12)%parMax =    0.30000
+  st(13)%parName = "f_C2S",           st(13)%parVal =    0.27720, st(13)%parMin =    0.25000, st(13)%parMax =    0.30000
+  st(14)%parName = "f_M2S",           st(14)%parVal =    0.31770, st(14)%parMin =    0.10000, st(14)%parMax =    0.40000
+  st(15)%parName = "f_M2P",           st(15)%parVal =    0.00510, st(15)%parMin =    0.00000, st(15)%parMax =    0.01000
+  st(16)%parName = "f_S2P",           st(16)%parVal =    0.03162, st(16)%parMin =    0.00000, st(16)%parMax =    0.05000
+  st(17)%parName = "f_S2M",           st(17)%parVal =    0.40820, st(17)%parMin =    0.10000, st(17)%parMax =    0.60000
+  st(18)%parName = "f_P2M",           st(18)%parVal =    0.45630, st(18)%parMin =    0.30000, st(18)%parMax =    0.70000
+  st(19)%parName = "r_me",            st(19)%parVal =    0.07355, st(19)%parMin =    0.00100, st(19)%parMax =    0.90000
+  st(20)%parName = "Q10pro",          st(20)%parVal =    2.87900, st(20)%parMin =    1.00000, st(20)%parMax =    6.00000
+  st(21)%parName = "kCH4",            st(21)%parVal =    5.00000, st(21)%parMin =    5.00000, st(21)%parMax =    5.00000
+  st(22)%parName = "Omax",            st(22)%parVal =   23.47000, st(22)%parMin =    0.01000, st(22)%parMax =   45.00000
+  st(23)%parName = "CH4_thre",        st(23)%parVal = 1343.00000, st(23)%parMin =  500.00000, st(23)%parMax = 1500.00000
+  st(24)%parName = "Tveg",            st(24)%parVal =    7.94700, st(24)%parMin =    0.00100, st(24)%parMax =   15.00000
+  st(25)%parName = "Tpro_me",         st(25)%parVal =   10.00000, st(25)%parMin =   10.00000, st(25)%parMax =   10.00000
+  st(26)%parName = "Toxi",            st(26)%parVal =   10.00000, st(26)%parMin =   10.00000, st(26)%parMax =   10.00000
+  st(27)%parName = "f",               st(27)%parVal =    0.38950, st(27)%parMin =    0.01000, st(27)%parMax =    0.50000
+  st(28)%parName = "bubprob",         st(28)%parVal =    0.25830, st(28)%parMin =    0.01000, st(28)%parMax =    0.50000
+  st(29)%parName = "Vmaxfraction",    st(29)%parVal =    0.08837, st(29)%parMin =    0.01000, st(29)%parMax =    0.20000
+  st(30)%parName = "f_fast",          st(30)%parVal =    0.00196, st(30)%parMin =    0.00100, st(30)%parMax =    0.05000
+  st(31)%parName = "f_slow",          st(31)%parVal =    0.54110, st(31)%parMin =    0.45000, st(31)%parMax =    0.65000
+  st(32)%parName = "s_soil",          st(32)%parVal =    1.08000, st(32)%parMin =    0.50000, st(32)%parMax =    2.00000
+  st(33)%parName = "par_shcap_snow",  st(33)%parVal = 993900.00000, st(33)%parMin = 20909.00000, st(33)%parMax = 1150000.00000
+  st(34)%parName = "par_condu_snow",  st(34)%parVal =    0.08155, st(34)%parMin =    0.01000, st(34)%parMax =    0.56000
+  st(35)%parName = "par_condu_b",     st(35)%parVal =    0.08627, st(35)%parMin =    0.02300, st(35)%parMax =    0.23000
+  st(36)%parName = "par_fsub",        st(36)%parVal =    0.11330, st(36)%parMin =    0.10000, st(36)%parMax =    1.00000
+  st(37)%parName = "par_rho_snow",    st(37)%parVal =   81.67000, st(37)%parMin =   50.00000, st(37)%parMax =  100.00000
+  st(38)%parName = "par_decay_m",     st(38)%parVal =    2.70100, st(38)%parMin =    0.10000, st(38)%parMax =   10.00000
+/
+
+
+&spDAParams
+    sp(1)%var(1)%parName = "LAImax"
+    sp(1)%var(1)%parVal = 8.017
+    sp(1)%var(1)%parMin = 4.0
+    sp(1)%var(1)%parMax = 9.0
+
+    sp(2)%var(1)%parName = "LAImax"
+    sp(2)%var(1)%parVal = 7.436
+    sp(2)%var(1)%parMin = 4.0
+    sp(2)%var(1)%parMax = 9.0
+
+    sp(3)%var(1)%parName = "LAImax"
+    sp(3)%var(1)%parVal = 8.262
+    sp(3)%var(1)%parMin = 4.0
+    sp(3)%var(1)%parMax = 9.0
+
+    sp(1)%var(2)%parName = "LAImin"
+    sp(1)%var(2)%parVal = 0.300
+    sp(1)%var(2)%parMin = 0.3
+    sp(1)%var(2)%parMax = 0.3
+
+    sp(2)%var(2)%parName = "LAImin"
+    sp(2)%var(2)%parVal = 0.300
+    sp(2)%var(2)%parMin = 0.3
+    sp(2)%var(2)%parMax = 0.3
+
+    sp(3)%var(2)%parName = "LAImin"
+    sp(3)%var(2)%parVal = 0.300
+    sp(3)%var(2)%parMin = 0.3
+    sp(3)%var(2)%parMax = 0.3
+
+    sp(1)%var(3)%parName = "stom_n"
+    sp(1)%var(3)%parVal = 2.000
+    sp(1)%var(3)%parMin = 2.0
+    sp(1)%var(3)%parMax = 2.0
+
+    sp(2)%var(3)%parName = "stom_n"
+    sp(2)%var(3)%parVal = 2.000
+    sp(2)%var(3)%parMin = 2.0
+    sp(2)%var(3)%parMax = 2.0
+
+    sp(3)%var(3)%parName = "stom_n"
+    sp(3)%var(3)%parVal = 2.000
+    sp(3)%var(3)%parMin = 2.0
+    sp(3)%var(3)%parMax = 2.0
+
+    sp(1)%var(4)%parName = "SapS"
+    sp(1)%var(4)%parVal = 0.4692
+    sp(1)%var(4)%parMin = 0.2
+    sp(1)%var(4)%parMax = 0.51
+
+    sp(2)%var(4)%parName = "SapS"
+    sp(2)%var(4)%parVal = 0.4483
+    sp(2)%var(4)%parMin = 0.4
+    sp(2)%var(4)%parMax = 0.51
+
+    sp(3)%var(4)%parName = "SapS"
+    sp(3)%var(4)%parVal = 0.5017
+    sp(3)%var(4)%parMin = 0.45
+    sp(3)%var(4)%parMax = 0.51
+
+    sp(1)%var(5)%parName = "SapR"
+    sp(1)%var(5)%parVal = 1.000
+    sp(1)%var(5)%parMin = 1.0
+    sp(1)%var(5)%parMax = 1.0
+
+    sp(2)%var(5)%parName = "SapR"
+    sp(2)%var(5)%parVal = 1.000
+    sp(2)%var(5)%parMin = 1.0
+    sp(2)%var(5)%parMax = 1.0
+
+    sp(3)%var(5)%parName = "SapR"
+    sp(3)%var(5)%parVal = 1.000
+    sp(3)%var(5)%parMin = 1.0
+    sp(3)%var(5)%parMax = 1.0
+
+    sp(1)%var(6)%parName = "SLAx"
+    sp(1)%var(6)%parVal = 42.77
+    sp(1)%var(6)%parMin = 10.0
+    sp(1)%var(6)%parMax = 200.0
+
+    sp(2)%var(6)%parName = "SLAx"
+    sp(2)%var(6)%parVal = 39.79
+    sp(2)%var(6)%parMin = 10.0
+    sp(2)%var(6)%parMax = 200.0
+
+    sp(3)%var(6)%parName = "SLAx"
+    sp(3)%var(6)%parVal = 99.11
+    sp(3)%var(6)%parMin = 40.0
+    sp(3)%var(6)%parMax = 400.0
+
+    sp(1)%var(7)%parName = "GLmax"
+    sp(1)%var(7)%parVal = 9.119
+    sp(1)%var(7)%parMin = 1.0
+    sp(1)%var(7)%parMax = 50.0
+
+    sp(2)%var(7)%parName = "GLmax"
+    sp(2)%var(7)%parVal = 26.250
+    sp(2)%var(7)%parMin = 10.0
+    sp(2)%var(7)%parMax = 50.0
+
+    sp(3)%var(7)%parName = "GLmax"
+    sp(3)%var(7)%parVal = 67.420
+    sp(3)%var(7)%parMin = 10.0
+    sp(3)%var(7)%parMax = 80.0
+
+    sp(1)%var(8)%parName = "GRmax"
+    sp(1)%var(8)%parVal = 27.62
+    sp(1)%var(8)%parMin = 1.0
+    sp(1)%var(8)%parMax = 30.0
+
+    sp(2)%var(8)%parName = "GRmax"
+    sp(2)%var(8)%parVal = 34.05
+    sp(2)%var(8)%parMin = 10.0
+    sp(2)%var(8)%parMax = 30.0
+
+    sp(3)%var(8)%parName = "GRmax"
+    sp(3)%var(8)%parVal = 54.89
+    sp(3)%var(8)%parMin = 10.0
+    sp(3)%var(8)%parMax = 80.0
+
+    sp(1)%var(9)%parName = "Gsmax"
+    sp(1)%var(9)%parVal = 9.543
+    sp(1)%var(9)%parMin = 1.0
+    sp(1)%var(9)%parMax = 30.0
+
+    sp(2)%var(9)%parName = "Gsmax"
+    sp(2)%var(9)%parVal = 17.710
+    sp(2)%var(9)%parMin = 10.0
+    sp(2)%var(9)%parMax = 30.0
+
+    sp(3)%var(9)%parName = "Gsmax"
+    sp(3)%var(9)%parVal = 60.150
+    sp(3)%var(9)%parMin = 10.0
+    sp(3)%var(9)%parMax = 80.0
+
+    sp(1)%var(10)%parName = "alpha"
+    sp(1)%var(10)%parVal = 0.385
+    sp(1)%var(10)%parMin = 0.385
+    sp(1)%var(10)%parMax = 0.385
+
+    sp(2)%var(10)%parName = "alpha"
+    sp(2)%var(10)%parVal = 0.385
+    sp(2)%var(10)%parMin = 0.385
+    sp(2)%var(10)%parMax = 0.385
+
+    sp(3)%var(10)%parName = "alpha"
+    sp(3)%var(10)%parVal = 0.385
+    sp(3)%var(10)%parMin = 0.385
+    sp(3)%var(10)%parMax = 0.385
+
+    sp(1)%var(11)%parName = "Vcmax0"
+    sp(1)%var(11)%parVal = 6.374
+    sp(1)%var(11)%parMin = 1.0
+    sp(1)%var(11)%parMax = 180.0
+
+    sp(2)%var(11)%parName = "Vcmax0"
+    sp(2)%var(11)%parVal = 58.430
+    sp(2)%var(11)%parMin = 1.0
+    sp(2)%var(11)%parMax = 180.0
+
+    sp(3)%var(11)%parName = "Vcmax0"
+    sp(3)%var(11)%parVal = 1.061
+    sp(3)%var(11)%parMin = 1.0
+    sp(3)%var(11)%parMax = 180.0
+
+    sp(1)%var(12)%parName = "Ds0"
+    sp(1)%var(12)%parVal = 2000.000
+    sp(1)%var(12)%parMin = 2000.0
+    sp(1)%var(12)%parMax = 2000.0
+
+    sp(2)%var(12)%parName = "Ds0"
+    sp(2)%var(12)%parVal = 2000.000
+    sp(2)%var(12)%parMin = 2000.0
+    sp(2)%var(12)%parMax = 2000.0
+
+    sp(3)%var(12)%parName = "Ds0"
+    sp(3)%var(12)%parVal = 2000.000
+    sp(3)%var(12)%parMin = 2000.0
+    sp(3)%var(12)%parMax = 2000.0
+
+    sp(1)%var(13)%parName = "xfang"
+    sp(1)%var(13)%parVal = 0.000
+    sp(1)%var(13)%parMin = 0.0
+    sp(1)%var(13)%parMax = 0.0
+
+    sp(2)%var(13)%parName = "xfang"
+    sp(2)%var(13)%parVal = 0.000
+    sp(2)%var(13)%parMin = 0.0
+    sp(2)%var(13)%parMax = 0.0
+
+    sp(3)%var(13)%parName = "xfang"
+    sp(3)%var(13)%parVal = 0.000
+    sp(3)%var(13)%parMin = 0.0
+    sp(3)%var(13)%parMax = 0.0
+
+    sp(1)%var(14)%parName = "rdepth"
+    sp(1)%var(14)%parVal = 150.000
+    sp(1)%var(14)%parMin = 150.0
+    sp(1)%var(14)%parMax = 150.0
+
+    sp(2)%var(14)%parName = "rdepth"
+    sp(2)%var(14)%parVal = 150.000
+    sp(2)%var(14)%parMin = 150.0
+    sp(2)%var(14)%parMax = 150.0
+
+    sp(3)%var(14)%parName = "rdepth"
+    sp(3)%var(14)%parVal = 150.000
+    sp(3)%var(14)%parMin = 150.0
+    sp(3)%var(14)%parMax = 150.0
+
+    sp(1)%var(15)%parName = "Rootmax"
+    sp(1)%var(15)%parVal = 500.000
+    sp(1)%var(15)%parMin = 500.0
+    sp(1)%var(15)%parMax = 500.0
+
+    sp(2)%var(15)%parName = "Rootmax"
+    sp(2)%var(15)%parVal = 500.000
+    sp(2)%var(15)%parMin = 500.0
+    sp(2)%var(15)%parMax = 500.0
+
+    sp(3)%var(15)%parName = "Rootmax"
+    sp(3)%var(15)%parVal = 500.000
+    sp(3)%var(15)%parMin = 500.0
+    sp(3)%var(15)%parMax = 500.0
+
+    sp(1)%var(16)%parName = "Stemmax"
+    sp(1)%var(16)%parVal = 1000.000
+    sp(1)%var(16)%parMin = 1000.0
+    sp(1)%var(16)%parMax = 1000.0
+
+    sp(2)%var(16)%parName = "Stemmax"
+    sp(2)%var(16)%parVal = 1000.000
+    sp(2)%var(16)%parMin = 1000.0
+    sp(2)%var(16)%parMax = 1000.0
+
+    sp(3)%var(16)%parName = "Stemmax"
+    sp(3)%var(16)%parVal = 1000.000
+    sp(3)%var(16)%parMin = 1000.0
+    sp(3)%var(16)%parMax = 1000.0
+
+    sp(1)%var(17)%parName = "Tau_Leaf"
+    sp(1)%var(17)%parVal = 1.513
+    sp(1)%var(17)%parMin = 0.5
+    sp(1)%var(17)%parMax = 3.0
+
+    sp(2)%var(17)%parName = "Tau_Leaf"
+    sp(2)%var(17)%parVal = 0.6834
+    sp(2)%var(17)%parMin = 0.01
+    sp(2)%var(17)%parMax = 3.0
+
+    sp(3)%var(17)%parName = "Tau_Leaf"
+    sp(3)%var(17)%parVal = 0.7506
+    sp(3)%var(17)%parMin = 0.01
+    sp(3)%var(17)%parMax = 3.0
+
+    sp(1)%var(18)%parName = "Tau_Stem"
+    sp(1)%var(18)%parVal = 58.680
+    sp(1)%var(18)%parMin = 5.0
+    sp(1)%var(18)%parMax = 80.0
+
+    sp(2)%var(18)%parName = "Tau_Stem"
+    sp(2)%var(18)%parVal = 67.810
+    sp(2)%var(18)%parMin = 5.0
+    sp(2)%var(18)%parMax = 80.0
+
+    sp(3)%var(18)%parName = "Tau_Stem"
+    sp(3)%var(18)%parVal = 0.777
+    sp(3)%var(18)%parMin = 0.1
+    sp(3)%var(18)%parMax = 3.0
+
+    sp(1)%var(19)%parName = "Tau_Root"
+    sp(1)%var(19)%parVal = 2.171
+    sp(1)%var(19)%parMin = 0.3
+    sp(1)%var(19)%parMax = 2.0
+
+    sp(2)%var(19)%parName = "Tau_Root"
+    sp(2)%var(19)%parVal = 1.849
+    sp(2)%var(19)%parMin = 0.3
+    sp(2)%var(19)%parMax = 3.0
+
+    sp(3)%var(19)%parName = "Tau_Root"
+    sp(3)%var(19)%parVal = 0.6867
+    sp(3)%var(19)%parMin = 0.1
+    sp(3)%var(19)%parMax = 3.0
+
+    sp(1)%var(20)%parName = "Q10"
+    sp(1)%var(20)%parVal = 2.630
+    sp(1)%var(20)%parMin = 1.0
+    sp(1)%var(20)%parMax = 4.0
+
+    sp(2)%var(20)%parName = "Q10"
+    sp(2)%var(20)%parVal = 2.843
+    sp(2)%var(20)%parMin = 1.0
+    sp(2)%var(20)%parMax = 3.0
+
+    sp(3)%var(20)%parName = "Q10"
+    sp(3)%var(20)%parVal = 1.835
+    sp(3)%var(20)%parMin = 1.0
+    sp(3)%var(20)%parMax = 4.0
+
+    sp(1)%var(21)%parName = "Rl0"
+    sp(1)%var(21)%parVal = 34.570
+    sp(1)%var(21)%parMin = 10.0
+    sp(1)%var(21)%parMax = 45.0
+
+    sp(2)%var(21)%parName = "Rl0"
+    sp(2)%var(21)%parVal = 42.460
+    sp(2)%var(21)%parMin = 10.0
+    sp(2)%var(21)%parMax = 65.0
+
+    sp(3)%var(21)%parName = "Rl0"
+    sp(3)%var(21)%parVal = 63.840
+    sp(3)%var(21)%parMin = 40.0
+    sp(3)%var(21)%parMax = 85.0
+
+    sp(1)%var(22)%parName = "Rs0"
+    sp(1)%var(22)%parVal = 5.991
+    sp(1)%var(22)%parMin = 5.0
+    sp(1)%var(22)%parMax = 10.0
+
+    sp(2)%var(22)%parName = "Rs0"
+    sp(2)%var(22)%parVal = 7.658
+    sp(2)%var(22)%parMin = 5.0
+    sp(2)%var(22)%parMax = 15.0
+
+    sp(3)%var(22)%parName = "Rs0"
+    sp(3)%var(22)%parVal = 62.870
+    sp(3)%var(22)%parMin = 10.0
+    sp(3)%var(22)%parMax = 85.0
+
+    sp(1)%var(23)%parName = "Rr0"
+    sp(1)%var(23)%parVal = 30.930
+    sp(1)%var(23)%parMin = 10.0
+    sp(1)%var(23)%parMax = 45.0
+
+    sp(2)%var(23)%parName = "Rr0"
+    sp(2)%var(23)%parVal = 28.750
+    sp(2)%var(23)%parMin = 10.0
+    sp(2)%var(23)%parMax = 45.0
+
+    sp(3)%var(23)%parName = "Rr0"
+    sp(3)%var(23)%parVal = 45.300
+    sp(3)%var(23)%parMin = 10.0
+    sp(3)%var(23)%parMax = 85.0
+
+    sp(1)%var(24)%parName = "JV"
+    sp(1)%var(24)%parVal = 1.653
+    sp(1)%var(24)%parMin = 0.1
+    sp(1)%var(24)%parMax = 3.0
+
+    sp(2)%var(24)%parName = "JV"
+    sp(2)%var(24)%parVal = 1.667
+    sp(2)%var(24)%parMin = 0.1
+    sp(2)%var(24)%parMax = 3.0
+
+    sp(3)%var(24)%parName = "JV"
+    sp(3)%var(24)%parVal = 1.226
+    sp(3)%var(24)%parMin = 0.1
+    sp(3)%var(24)%parMax = 3.0
+
+    sp(1)%var(25)%parName = "Entrpy"
+    sp(1)%var(25)%parVal = 657.200
+    sp(1)%var(25)%parMin = 600.0
+    sp(1)%var(25)%parMax = 700.0
+
+    sp(2)%var(25)%parName = "Entrpy"
+    sp(2)%var(25)%parVal = 659.300
+    sp(2)%var(25)%parMin = 600.0
+    sp(2)%var(25)%parMax = 700.0
+
+    sp(3)%var(25)%parName = "Entrpy"
+    sp(3)%var(25)%parVal = 669.100
+    sp(3)%var(25)%parMin = 600.0
+    sp(3)%var(25)%parMax = 700.0
+
+    sp(1)%var(26)%parName = "gddonset"
+    sp(1)%var(26)%parVal = 156.500
+    sp(1)%var(26)%parMin = 100.0
+    sp(1)%var(26)%parMax = 160.0
+
+    sp(2)%var(26)%parName = "gddonset"
+    sp(2)%var(26)%parVal = 156.800
+    sp(2)%var(26)%parMin = 100.0
+    sp(2)%var(26)%parMax = 160.0
+
+    sp(3)%var(26)%parName = "gddonset"
+    sp(3)%var(26)%parVal = 153.200
+    sp(3)%var(26)%parMin = 100.0
+    sp(3)%var(26)%parMax = 160.0
+
+    sp(1)%var(27)%parName = "hmax"
+    sp(1)%var(27)%parVal = 24.190
+    sp(1)%var(27)%parMin = 24.19
+    sp(1)%var(27)%parMax = 24.19
+
+    sp(2)%var(27)%parName = "hmax"
+    sp(2)%var(27)%parVal = 24.190
+    sp(2)%var(27)%parMin = 24.19
+    sp(2)%var(27)%parMax = 24.19
+
+    sp(3)%var(27)%parName = "hmax"
+    sp(3)%var(27)%parVal = 24.190
+    sp(3)%var(27)%parMin = 24.19
+    sp(3)%var(27)%parMax = 24.19
+
+    sp(1)%var(28)%parName = "hl0"
+    sp(1)%var(28)%parVal = 0.00019
+    sp(1)%var(28)%parMin = 0.00019
+    sp(1)%var(28)%parMax = 0.00019
+
+    sp(2)%var(28)%parName = "hl0"
+    sp(2)%var(28)%parVal = 0.00019
+    sp(2)%var(28)%parMin = 0.00019
+    sp(2)%var(28)%parMax = 0.00019
+
+    sp(3)%var(28)%parName = "hl0"
+    sp(3)%var(28)%parVal = 0.00019
+    sp(3)%var(28)%parMin = 0.00019
+    sp(3)%var(28)%parMax = 0.00019
+
+    sp(1)%var(29)%parName = "LAIMAX0"
+    sp(1)%var(29)%parVal = 8.000
+    sp(1)%var(29)%parMin = 8.0
+    sp(1)%var(29)%parMax = 8.0
+
+    sp(2)%var(29)%parName = "LAIMAX0"
+    sp(2)%var(29)%parVal = 8.000
+    sp(2)%var(29)%parMin = 8.0
+    sp(2)%var(29)%parMax = 8.0
+
+    sp(3)%var(29)%parName = "LAIMAX0"
+    sp(3)%var(29)%parVal = 8.000
+    sp(3)%var(29)%parMin = 8.0
+    sp(3)%var(29)%parMax = 8.0
+
+    sp(1)%var(30)%parName = "la0"
+    sp(1)%var(30)%parVal = 0.200
+    sp(1)%var(30)%parMin = 0.2
+    sp(1)%var(30)%parMax = 0.2
+
+    sp(2)%var(30)%parName = "la0"
+    sp(2)%var(30)%parVal = 0.200
+    sp(2)%var(30)%parMin = 0.2
+    sp(2)%var(30)%parMax = 0.2
+
+    sp(3)%var(30)%parName = "la0"
+    sp(3)%var(30)%parVal = 0.200
+    sp(3)%var(30)%parMin = 0.2
+    sp(3)%var(30)%parMax = 0.2
+
+    sp(1)%var(31)%parName = "fn2l"
+    sp(1)%var(31)%parVal = 0.1983
+    sp(1)%var(31)%parMin = 0.1
+    sp(1)%var(31)%parMax = 0.55
+
+    sp(2)%var(31)%parName = "fn2l"
+    sp(2)%var(31)%parVal = 0.5008
+    sp(2)%var(31)%parMin = 0.2
+    sp(2)%var(31)%parMax = 0.55
+
+    sp(3)%var(31)%parName = "fn2l"
+    sp(3)%var(31)%parVal = 0.3340
+    sp(3)%var(31)%parMin = 0.3
+    sp(3)%var(31)%parMax = 0.35
+
+    sp(1)%var(32)%parName = "fn2r"
+    sp(1)%var(32)%parVal = 0.3874
+    sp(1)%var(32)%parMin = 0.1
+    sp(1)%var(32)%parMax = 0.45
+
+    sp(2)%var(32)%parName = "fn2r"
+    sp(2)%var(32)%parVal = 0.3651
+    sp(2)%var(32)%parMin = 0.1
+    sp(2)%var(32)%parMax = 0.45
+
+    sp(3)%var(32)%parName = "fn2r"
+    sp(3)%var(32)%parVal = 0.2997
+    sp(3)%var(32)%parMin = 0.28
+    sp(3)%var(32)%parMax = 0.35
+
+    sp(1)%var(33)%parName = "s_cLeaf"
+    sp(1)%var(33)%parVal = 1.648
+    sp(1)%var(33)%parMin = 0.1
+    sp(1)%var(33)%parMax = 10.0
+
+    sp(2)%var(33)%parName = "s_cLeaf"
+    sp(2)%var(33)%parVal = 3.051
+    sp(2)%var(33)%parMin = 0.1
+    sp(2)%var(33)%parMax = 10.0
+
+    sp(3)%var(33)%parName = "s_cLeaf"
+    sp(3)%var(33)%parVal = 2.143
+    sp(3)%var(33)%parMin = 0.1
+    sp(3)%var(33)%parMax = 10.0
+
+    sp(1)%var(34)%parName = "s_cStem"
+    sp(1)%var(34)%parVal = 3.411
+    sp(1)%var(34)%parMin = 0.1
+    sp(1)%var(34)%parMax = 20.0
+
+    sp(2)%var(34)%parName = "s_cStem"
+    sp(2)%var(34)%parVal = 13.940
+    sp(2)%var(34)%parMin = 0.1
+    sp(2)%var(34)%parMax = 20.0
+
+    sp(3)%var(34)%parName = "s_cStem"
+    sp(3)%var(34)%parVal = 2.670
+    sp(3)%var(34)%parMin = 0.1
+    sp(3)%var(34)%parMax = 20.0
+
+    sp(1)%var(35)%parName = "s_cRoot"
+    sp(1)%var(35)%parVal = 1.847
+    sp(1)%var(35)%parMin = 0.1
+    sp(1)%var(35)%parMax = 10.0
+
+    sp(2)%var(35)%parName = "s_cRoot"
+    sp(2)%var(35)%parVal = 2.681
+    sp(2)%var(35)%parMin = 0.1
+    sp(2)%var(35)%parMax = 10.0
+
+    sp(3)%var(35)%parName = "s_cRoot"
+    sp(3)%var(35)%parVal = 2.718
+    sp(3)%var(35)%parMin = 0.1
+    sp(3)%var(35)%parMax = 10.0
+
+    sp(1)%var(36)%parName = "s_nsc"
+    sp(1)%var(36)%parVal = 0.5074
+    sp(1)%var(36)%parMin = 0.1
+    sp(1)%var(36)%parMax = 10.0
+
+    sp(2)%var(36)%parName = "s_nsc"
+    sp(2)%var(36)%parVal = 3.1560
+    sp(2)%var(36)%parMin = 0.1
+    sp(2)%var(36)%parMax = 10.0
+
+    sp(3)%var(36)%parName = "s_nsc"
+    sp(3)%var(36)%parVal = 0.5667
+    sp(3)%var(36)%parMin = 0.1
+    sp(3)%var(36)%parMax = 10.0
+
+    sp(1)%var(37)%parName = "s_nsn"
+    sp(1)%var(37)%parVal = 0.9471
+    sp(1)%var(37)%parMin = 0.1
+    sp(1)%var(37)%parMax = 10.0
+
+    sp(2)%var(37)%parName = "s_nsn"
+    sp(2)%var(37)%parVal = 1.7820
+    sp(2)%var(37)%parMin = 0.1
+    sp(2)%var(37)%parMax = 10.0
+
+    sp(3)%var(37)%parName = "s_nsn"
+    sp(3)%var(37)%parVal = 0.2018
+    sp(3)%var(37)%parMin = 0.1
+    sp(3)%var(37)%parMax = 10.0
+/

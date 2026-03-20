@@ -45,9 +45,6 @@ services:
       --reload
       --reload-dir /app/app
       --reload-dir /app/config
-    depends_on:
-      site-spruce:
-        condition: service_started
     restart: unless-stopped
 
   site-template:

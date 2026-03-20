@@ -1,0 +1,45 @@
+{
+  "run_id": "d540461ab9924f12896e5be44c226e5e",
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "series_type": "forecast_with_da",
+  "treatment": "treatment_1",
+  "parameter_estimate_method": "mock_default",
+  "parameters": [
+    {
+      "id": "vcmax",
+      "name": "Maximum carboxylation rate",
+      "unit": "umol m-2 s-1",
+      "default": 45.0,
+      "optimized": 42.1,
+      "map": 41.8,
+      "mean": 42.1,
+      "median": 42.0,
+      "sd": 3.5,
+      "p05": 36.2,
+      "p25": 39.8,
+      "p75": 44.3,
+      "p95": 48.6,
+      "minimum": 10.0,
+      "maximum": 120.0
+    },
+    {
+      "id": "rl0",
+      "name": "Base leaf respiration rate",
+      "unit": "umol m-2 s-1",
+      "default": 0.8,
+      "optimized": 0.92,
+      "map": 0.9,
+      "mean": 0.92,
+      "median": 0.91,
+      "sd": 0.08,
+      "p05": 0.79,
+      "p25": 0.86,
+      "p75": 0.98,
+      "p95": 1.05,
+      "minimum": 0.1,
+      "maximum": 3.0
+    }
+  ]
+}

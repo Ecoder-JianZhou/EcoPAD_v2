@@ -1,0 +1,23 @@
+{
+  "site_id": "SPRUCE",
+  "site_name": "Spruce and Peatland Responses Under Changing Environments",
+  "description": "An experiment to assess the response of northern peatland ecosystems to increases in temperature and exposures to elevated atmospheric CO2 concentrations.",
+  "models": [
+    "TECO-SPRUCE_v2",
+    "TECO-SPRUCE_v3"
+  ],
+  "treatments": [
+    "W0.00_CO2.000",
+    "W2.25_CO2.000",
+    "W4.50_CO2.000",
+    "W6.75_CO2.000",
+    "W9.00_CO2.000",
+
+    "W0.00_CO2.500",
+    "W2.25_CO2.500",
+    "W4.50_CO2.500",
+    "W6.75_CO2.500",
+    "W9.00_CO2.500"
+  ],
+  "default_model": "TECO-SPRUCE_v3"
+}

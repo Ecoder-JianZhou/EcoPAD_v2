@@ -6,9 +6,9 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Header, HTTPException
 
+from app.api.auth import require_user
 from app.core.db import get_db
 from app.core.settings import RUNNER_SERVICE_URL
-from app.api.auth import require_user
 
 router = APIRouter()
 
@@ -45,7 +45,6 @@ def _job_row_to_dict(row) -> dict[str, Any]:
         "treatments": _split_csv(row[5]),
         "created_at": row[6],
         "status": row[7],
-        # Enriched later from Runner:
         "started_at": None,
         "finished_at": None,
         "updated_at": None,
@@ -91,7 +90,6 @@ def _merge_job_with_runner(job: dict[str, Any], run: dict[str, Any] | None) -> d
     merged["trigger_type"] = run.get("trigger_type") or ""
     merged["error_message"] = run.get("error_message") or ""
 
-    # Keep Portal values if they exist; otherwise fill from Runner.
     merged["site"] = merged.get("site") or run.get("site_id") or ""
     merged["task"] = merged.get("task") or run.get("task_type") or ""
 
@@ -139,6 +137,25 @@ async def _enrich_jobs_with_runner(jobs: list[dict[str, Any]]) -> list[dict[str,
         run_obj = None if isinstance(run, Exception) else run
         out.append(_merge_job_with_runner(job, run_obj))
     return out
+
+
+async def _delete_portal_job_row(job_id: str, user_id: int) -> None:
+    """
+    Delete one local Portal jobs row.
+    """
+    db = await get_db()
+    try:
+        await db.execute(
+            """
+            DELETE FROM jobs
+            WHERE id = ?
+              AND user_id = ?
+            """,
+            (job_id, user_id),
+        )
+        await db.commit()
+    finally:
+        await db.close()
 
 
 # ---------------------------------------------------------------------
@@ -205,7 +222,6 @@ async def refresh_my_job_status(authorization: str | None = Header(default=None)
 
                     payload = response.json() or {}
                     new_status = payload.get("status")
-                    error_message = payload.get("error_message") or payload.get("error")
 
                     if new_status:
                         await db.execute(
@@ -217,13 +233,6 @@ async def refresh_my_job_status(authorization: str | None = Header(default=None)
                             (new_status, job_id),
                         )
                         updated_count += 1
-
-                    # Optional future schema extension:
-                    # if error_message is not None:
-                    #     await db.execute(
-                    #         "UPDATE jobs SET error=? WHERE id=?",
-                    #         (error_message, job_id),
-                    #     )
 
                 except Exception:
                     continue
@@ -245,9 +254,9 @@ async def delete_my_job(
 
     Rules:
     - only the owner can delete the job
-    - only terminal jobs can be deleted from Portal view
-    - Portal asks Runner to delete the corresponding run first
-    - Portal deletes its local jobs row only after Runner succeeds
+    - Portal tries to delete the corresponding Runner run first
+    - if Runner run is already missing, Portal still deletes its local row
+    - Portal deletes its local jobs row only after ownership check
     """
     user = await require_user(authorization)
 
@@ -268,61 +277,76 @@ async def delete_my_job(
     if row is None:
         raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
-    row_user_id = row[1]
-    row_status = str(row[2] or "").lower()
+    row_user_id = int(row[1])
+    local_status = str(row[2] or "").lower()
 
-    if int(row_user_id) != int(user["id"]):
+    if row_user_id != int(user["id"]):
         raise HTTPException(
             status_code=403,
             detail="You do not have permission to delete this job.",
         )
 
-    if row_status not in {"done", "failed", "cancelled"}:
+    runner_run: dict[str, Any] | None = None
+
+    if RUNNER_SERVICE_URL:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                get_resp = await client.get(f"{RUNNER_SERVICE_URL}/api/runs/{job_id}")
+                if get_resp.status_code == 200:
+                    payload = get_resp.json() or {}
+                    runner_run = payload if isinstance(payload, dict) else None
+                elif get_resp.status_code == 404:
+                    runner_run = None
+                else:
+                    try:
+                        payload = get_resp.json() or {}
+                        detail = payload.get("detail") or get_resp.text
+                    except Exception:
+                        detail = get_resp.text or "Runner lookup failed"
+                    raise HTTPException(status_code=400, detail=detail)
+        except HTTPException:
+            raise
+        except Exception as ex:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to query runner job: {str(ex)}",
+            )
+
+    effective_status = local_status
+    if isinstance(runner_run, dict):
+        effective_status = str(runner_run.get("status") or local_status).lower()
+
+    if runner_run is not None and effective_status not in {"done", "failed", "cancelled"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Only terminal jobs can be deleted. Current status: {row_status or 'unknown'}",
+            detail=f"Only terminal jobs can be deleted. Current status: {effective_status or 'unknown'}",
         )
 
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.delete(f"{RUNNER_SERVICE_URL}/api/runs/{job_id}")
+    if RUNNER_SERVICE_URL and runner_run is not None:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                delete_resp = await client.delete(f"{RUNNER_SERVICE_URL}/api/runs/{job_id}")
 
-            if response.status_code == 404:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Runner run not found: {job_id}",
-                )
+                if delete_resp.status_code == 404:
+                    pass
+                elif delete_resp.status_code != 200:
+                    try:
+                        payload = delete_resp.json() or {}
+                        detail = payload.get("detail") or delete_resp.text
+                    except Exception:
+                        detail = delete_resp.text or "Runner delete failed"
 
-            if response.status_code != 200:
-                try:
-                    payload = response.json() or {}
-                    detail = payload.get("detail") or response.text
-                except Exception:
-                    detail = response.text or "Runner delete failed"
+                    raise HTTPException(status_code=400, detail=detail)
 
-                raise HTTPException(status_code=400, detail=detail)
+        except HTTPException:
+            raise
+        except Exception as ex:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to delete runner job: {str(ex)}",
+            )
 
-    except HTTPException:
-        raise
-    except Exception as ex:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to delete runner job: {str(ex)}",
-        )
-
-    db2 = await get_db()
-    try:
-        await db2.execute(
-            """
-            DELETE FROM jobs
-            WHERE id = ?
-              AND user_id = ?
-            """,
-            (job_id, user["id"]),
-        )
-        await db2.commit()
-    finally:
-        await db2.close()
+    await _delete_portal_job_row(job_id, int(user["id"]))
 
     return {
         "ok": True,

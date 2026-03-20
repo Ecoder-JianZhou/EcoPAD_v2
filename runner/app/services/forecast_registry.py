@@ -22,6 +22,14 @@ from typing import Any
 from app.core.db import get_db, now_iso
 
 
+SUPPORTED_SERIES_TYPES = (
+    "simulate",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+)
+
+
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
@@ -100,6 +108,43 @@ def _normalize_flag(value: Any, default: int = 1) -> int:
     return 1 if int(value) else 0
 
 
+def _normalize_series_type(value: Any, default: str = "forecast_with_da") -> str:
+    """
+    Normalize series type into one of the supported values.
+    """
+    text = _normalize_text(value) or default
+    if text not in SUPPORTED_SERIES_TYPES:
+        return default
+    return text
+
+
+def _resolve_series_type_from_item(item: dict[str, Any], default: str = "forecast_with_da") -> str:
+    """
+    Resolve series_type from a manifest/db item.
+
+    Compatibility:
+    - prefer item["series_type"]
+    - fallback to old item["forecast_mode"]
+    """
+    if not isinstance(item, dict):
+        return default
+
+    if item.get("series_type") is not None:
+        return _normalize_series_type(item.get("series_type"), default=default)
+
+    if item.get("forecast_mode") is not None:
+        return _normalize_series_type(item.get("forecast_mode"), default=default)
+
+    source_ref = item.get("source_ref")
+    if isinstance(source_ref, dict):
+        if source_ref.get("series_type") is not None:
+            return _normalize_series_type(source_ref.get("series_type"), default=default)
+        if source_ref.get("forecast_mode") is not None:
+            return _normalize_series_type(source_ref.get("forecast_mode"), default=default)
+
+    return default
+
+
 # ---------------------------------------------------------------------
 # Core publish internals
 # ---------------------------------------------------------------------
@@ -110,6 +155,7 @@ async def _publish_one_in_tx(
     model_id: str,
     variable: str,
     treatment: str,
+    series_type: str,
     source_run_id: str,
     data_path: str = "",
     obs_path: str = "",
@@ -120,7 +166,9 @@ async def _publish_one_in_tx(
     Publish one forecast row inside an existing transaction.
 
     Behavior:
-    - old latest row for the same (site, model, variable, treatment) becomes not-latest
+    - old latest row for the same
+      (site, model, variable, treatment, series_type)
+      becomes not-latest
     - new row is inserted as latest
 
     Returns inserted row id.
@@ -135,9 +183,10 @@ async def _publish_one_in_tx(
           AND model_id=?
           AND variable=?
           AND treatment=?
+          AND series_type=?
           AND is_latest=1
         """,
-        (site_id, model_id, variable, treatment),
+        (site_id, model_id, variable, treatment, series_type),
     )
 
     cur = await db.execute(
@@ -147,6 +196,7 @@ async def _publish_one_in_tx(
             model_id,
             variable,
             treatment,
+            series_type,
             source_run_id,
             data_path,
             obs_path,
@@ -155,13 +205,14 @@ async def _publish_one_in_tx(
             is_latest,
             is_published
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         """,
         (
             site_id,
             model_id,
             variable,
             treatment,
+            series_type,
             source_run_id,
             data_path,
             obs_path,
@@ -183,6 +234,7 @@ async def publish_forecast(
     variable: str,
     treatment: str,
     source_run_id: str,
+    series_type: str = "forecast_with_da",
     data_path: str = "",
     obs_path: str | None = None,
     source_ref: dict[str, Any] | None = None,
@@ -196,6 +248,7 @@ async def publish_forecast(
     variable = _normalize_text(variable)
     treatment = _normalize_text(treatment)
     source_run_id = _normalize_text(source_run_id)
+    series_type = _normalize_series_type(series_type)
 
     if not site_id or not model_id or not variable or not treatment or not source_run_id:
         raise ValueError("site_id, model_id, variable, treatment, and source_run_id are required")
@@ -209,6 +262,7 @@ async def publish_forecast(
             model_id=model_id,
             variable=variable,
             treatment=treatment,
+            series_type=series_type,
             source_run_id=source_run_id,
             data_path=_normalize_text(data_path),
             obs_path=_normalize_text(obs_path),
@@ -252,6 +306,7 @@ async def publish_forecasts(
     - source_run_id
 
     Optional:
+    - series_type
     - data_path
     - obs_path
     - source_ref
@@ -272,6 +327,7 @@ async def publish_forecasts(
             variable = _normalize_text(item.get("variable"))
             treatment = _normalize_text(item.get("treatment"))
             source_run_id = _normalize_text(item.get("source_run_id"))
+            series_type = _resolve_series_type_from_item(item)
 
             if not site_id or not model_id or not variable or not treatment or not source_run_id:
                 raise ValueError(
@@ -284,6 +340,7 @@ async def publish_forecasts(
                 model_id=model_id,
                 variable=variable,
                 treatment=treatment,
+                series_type=series_type,
                 source_run_id=source_run_id,
                 data_path=_normalize_text(item.get("data_path")),
                 obs_path=_normalize_text(item.get("obs_path")),
@@ -331,13 +388,17 @@ async def publish_from_manifest(
           "model_id": "TECO-SPRUCE",
           "variable": "GPP",
           "treatment": "W0.00_CO2_000",
-          "data_path": "/path/to/file.json",
+          "series_type": "forecast_with_da",
+          "data_path": "outputs/...",
           "obs_path": "",
           "source_ref": {...},
           "is_published": 1
         }
       ]
     }
+
+    Compatibility:
+    - old `forecast_mode` is also accepted
     """
     site_id = _normalize_text(site_id)
     source_run_id = _normalize_text(source_run_id)
@@ -359,16 +420,28 @@ async def publish_from_manifest(
         if not model_id or not variable or not treatment:
             continue
 
+        source_ref = item.get("source_ref")
+        if not isinstance(source_ref, dict):
+            source_ref = _parse_json_text(item.get("source_ref_json")) or {}
+        if not isinstance(source_ref, dict):
+            source_ref = {}
+
+        resolved_series_type = _resolve_series_type_from_item(item)
+
+        if "series_type" not in source_ref:
+            source_ref["series_type"] = resolved_series_type
+
         items.append(
             {
                 "site_id": site_id,
                 "model_id": model_id,
                 "variable": variable,
                 "treatment": treatment,
+                "series_type": resolved_series_type,
                 "source_run_id": source_run_id,
                 "data_path": _normalize_text(item.get("data_path")),
                 "obs_path": _normalize_text(item.get("obs_path")),
-                "source_ref": item.get("source_ref") or _parse_json_text(item.get("source_ref_json")) or {},
+                "source_ref": source_ref,
                 "is_published": _normalize_flag(item.get("is_published"), 1),
             }
         )
@@ -385,10 +458,11 @@ async def get_latest_forecast(
     variable: str,
     treatment: str,
     model_id: str | None = None,
+    series_type: str = "forecast_with_da",
     published_only: bool = True,
 ) -> dict[str, Any] | None:
     """
-    Return latest forecast row for one site / variable / treatment.
+    Return latest forecast row for one site / variable / treatment / series_type.
     """
     db = await get_db()
     try:
@@ -396,9 +470,10 @@ async def get_latest_forecast(
             "site_id=?",
             "variable=?",
             "treatment=?",
+            "series_type=?",
             "is_latest=1",
         ]
-        params: list[Any] = [site_id, variable, treatment]
+        params: list[Any] = [site_id, variable, treatment, _normalize_series_type(series_type)]
 
         if model_id:
             where.append("model_id=?")
@@ -429,6 +504,7 @@ async def list_latest_forecasts(
     model_id: str | None = None,
     variable: str | None = None,
     treatment: str | None = None,
+    series_type: str | None = None,
     limit: int = 500,
 ) -> list[dict[str, Any]]:
     """
@@ -453,6 +529,10 @@ async def list_latest_forecasts(
         if treatment:
             where.append("treatment=?")
             params.append(treatment)
+
+        if series_type:
+            where.append("series_type=?")
+            params.append(_normalize_series_type(series_type))
 
         sql = f"""
         SELECT *
@@ -558,6 +638,19 @@ async def get_forecast_summary(site_id: str) -> dict[str, Any]:
         )
         treatments = [r["treatment"] for r in await cur6.fetchall()]
 
+        cur7 = await db.execute(
+            """
+            SELECT DISTINCT series_type
+            FROM forecast_registry
+            WHERE site_id=?
+              AND is_latest=1
+              AND is_published=1
+            ORDER BY series_type
+            """,
+            (site_id,),
+        )
+        series_types = [r["series_type"] for r in await cur7.fetchall()]
+
         return {
             "site_id": site_id,
             "latest_update": row1["latest_update"] if row1 else None,
@@ -565,6 +658,7 @@ async def get_forecast_summary(site_id: str) -> dict[str, Any]:
             "models": models,
             "variables": variables,
             "treatments": treatments,
+            "series_types": series_types,
             "latest_auto_forecast": _row_to_dict(row3),
         }
     finally:
@@ -617,6 +711,7 @@ async def unlatest_forecast_series(
     model_id: str,
     variable: str,
     treatment: str,
+    series_type: str = "forecast_with_da",
 ) -> int:
     """
     Mark current latest rows as not latest for one series.
@@ -631,9 +726,10 @@ async def unlatest_forecast_series(
               AND model_id=?
               AND variable=?
               AND treatment=?
+              AND series_type=?
               AND is_latest=1
             """,
-            (site_id, model_id, variable, treatment),
+            (site_id, model_id, variable, treatment, _normalize_series_type(series_type)),
         )
         await db.commit()
         return int(cur.rowcount or 0)
@@ -668,23 +764,29 @@ async def list_forecasts_for_run(
     source_run_id: str,
     *,
     latest_only: bool = False,
+    series_type: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     List forecast rows produced from one source run.
     """
     db = await get_db()
     try:
-        sql = """
-        SELECT *
-        FROM forecast_registry
-        WHERE source_run_id=?
-        """
+        where = ["source_run_id=?"]
         params: list[Any] = [source_run_id]
 
         if latest_only:
-            sql += " AND is_latest=1"
+            where.append("is_latest=1")
 
-        sql += " ORDER BY updated_at DESC"
+        if series_type:
+            where.append("series_type=?")
+            params.append(_normalize_series_type(series_type))
+
+        sql = f"""
+        SELECT *
+        FROM forecast_registry
+        WHERE {" AND ".join(where)}
+        ORDER BY updated_at DESC
+        """
 
         cur = await db.execute(sql, tuple(params))
         rows = await cur.fetchall()
@@ -693,69 +795,105 @@ async def list_forecasts_for_run(
         await db.close()
 
 
-async def list_latest_variables(site_id: str) -> list[str]:
+async def list_latest_variables(
+    site_id: str,
+    *,
+    series_type: str | None = None,
+) -> list[str]:
     """
     List distinct latest published variables for one site.
     """
     db = await get_db()
     try:
-        cur = await db.execute(
-            """
+        where = [
+            "site_id=?",
+            "is_latest=1",
+            "is_published=1",
+        ]
+        params: list[Any] = [site_id]
+
+        if series_type:
+            where.append("series_type=?")
+            params.append(_normalize_series_type(series_type))
+
+        sql = f"""
             SELECT DISTINCT variable
             FROM forecast_registry
-            WHERE site_id=?
-              AND is_latest=1
-              AND is_published=1
+            WHERE {" AND ".join(where)}
             ORDER BY variable
-            """,
-            (site_id,),
-        )
+        """
+
+        cur = await db.execute(sql, tuple(params))
         rows = await cur.fetchall()
         return [r["variable"] for r in rows]
     finally:
         await db.close()
 
 
-async def list_latest_treatments(site_id: str) -> list[str]:
+async def list_latest_treatments(
+    site_id: str,
+    *,
+    series_type: str | None = None,
+) -> list[str]:
     """
     List distinct latest published treatments for one site.
     """
     db = await get_db()
     try:
-        cur = await db.execute(
-            """
+        where = [
+            "site_id=?",
+            "is_latest=1",
+            "is_published=1",
+        ]
+        params: list[Any] = [site_id]
+
+        if series_type:
+            where.append("series_type=?")
+            params.append(_normalize_series_type(series_type))
+
+        sql = f"""
             SELECT DISTINCT treatment
             FROM forecast_registry
-            WHERE site_id=?
-              AND is_latest=1
-              AND is_published=1
+            WHERE {" AND ".join(where)}
             ORDER BY treatment
-            """,
-            (site_id,),
-        )
+        """
+
+        cur = await db.execute(sql, tuple(params))
         rows = await cur.fetchall()
         return [r["treatment"] for r in rows]
     finally:
         await db.close()
 
 
-async def list_latest_models(site_id: str) -> list[str]:
+async def list_latest_models(
+    site_id: str,
+    *,
+    series_type: str | None = None,
+) -> list[str]:
     """
     List distinct latest published models for one site.
     """
     db = await get_db()
     try:
-        cur = await db.execute(
-            """
+        where = [
+            "site_id=?",
+            "is_latest=1",
+            "is_published=1",
+        ]
+        params: list[Any] = [site_id]
+
+        if series_type:
+            where.append("series_type=?")
+            params.append(_normalize_series_type(series_type))
+
+        sql = f"""
             SELECT DISTINCT model_id
             FROM forecast_registry
-            WHERE site_id=?
-              AND is_latest=1
-              AND is_published=1
+            WHERE {" AND ".join(where)}
             ORDER BY model_id
-            """,
-            (site_id,),
-        )
+        """
+
+        cur = await db.execute(sql, tuple(params))
         rows = await cur.fetchall()
         return [r["model_id"] for r in rows]
     finally:
@@ -771,6 +909,7 @@ async def get_latest_auto_forecast_run_for_series(
     model_id: str,
     treatment: str,
     variable: str,
+    series_type: str = "forecast_with_da",
 ) -> dict[str, Any] | None:
     """
     Resolve the latest auto-forecast run for one published forecast series.
@@ -793,13 +932,20 @@ async def get_latest_auto_forecast_run_for_series(
               AND fr.model_id=?
               AND fr.treatment=?
               AND fr.variable=?
+              AND fr.series_type=?
               AND fr.is_latest=1
               AND fr.is_published=1
               AND r.task_type='auto_forecast'
             ORDER BY fr.updated_at DESC
             LIMIT 1
             """,
-            (site_id, model_id, treatment, variable),
+            (
+                site_id,
+                model_id,
+                treatment,
+                variable,
+                _normalize_series_type(series_type),
+            ),
         )
         row = await cur.fetchone()
         return _row_to_dict(row)
@@ -877,22 +1023,6 @@ async def list_parameter_history_for_schedule(
 ) -> list[dict[str, Any]]:
     """
     Return parameter history across repeated auto-forecast runs in one schedule chain.
-
-    Expected parameter_summary artifact metadata shape:
-    {
-      "model_id": "TECO-SPRUCE",
-      "treatment": "W0.00_CO2_000",
-      "parameters": {
-        "vcmax": {"value": 42.1, "min": 10, "max": 80, ...},
-        ...
-      }
-    }
-
-    Returned rows are normalized into a list where each item contains:
-    - run_id
-    - created / updated / finished time
-    - artifact metadata
-    - extracted parameter entry under key "parameter"
     """
     db = await get_db()
     try:
@@ -974,15 +1104,6 @@ async def get_parameter_hist_artifact_for_run(
 ) -> dict[str, Any] | None:
     """
     Return one posterior / histogram artifact for a specific run.
-
-    Typical artifact types:
-    - parameter_posterior
-    - parameter_hist
-
-    Matching logic:
-    - artifact_type must match exactly
-    - if metadata.model_id exists, it should match requested model_id
-    - otherwise fall back to the parent run.model_id
     """
     db = await get_db()
     try:

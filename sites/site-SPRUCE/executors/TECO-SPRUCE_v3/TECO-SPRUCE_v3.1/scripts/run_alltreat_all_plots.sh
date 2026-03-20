@@ -1,0 +1,10 @@
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P04.nml > ../outputs/outlogs/out_alltreat_P04.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P06.nml > ../outputs/outlogs/out_alltreat_P06.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P08.nml > ../outputs/outlogs/out_alltreat_P08.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P10.nml > ../outputs/outlogs/out_alltreat_P10.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P11.nml > ../outputs/outlogs/out_alltreat_P11.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P13.nml > ../outputs/outlogs/out_alltreat_P13.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P16.nml > ../outputs/outlogs/out_alltreat_P16.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P17.nml > ../outputs/outlogs/out_alltreat_P17.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P19.nml > ../outputs/outlogs/out_alltreat_P19.log &
+nohup ./teco-spruce.exe conf_alltreat/teco_conf_P20.nml > ../outputs/outlogs/out_alltreat_P20.log &

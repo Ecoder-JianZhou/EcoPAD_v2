@@ -1,0 +1,12 @@
+Custom Workflow里面
+
+
+
+simualte without da出错：
+Runner error: {"detail":"Failed to create run: CHECK constraint failed: task_type IN (\n            'simulate',\n            'simulation_with_da',\n            'forecast_with_da',\n            'forecast_without_da',\n            'auto_forecast',\n            'custom'\n        )"}
+
+Download 数据文件需要选择。
+Delete 数据需要删除runs的文件
+
+observation数据的测试
+Parameters结果的测试

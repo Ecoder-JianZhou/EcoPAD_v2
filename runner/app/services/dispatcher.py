@@ -35,48 +35,61 @@ from app.services.run_manager import (
 from app.services.site_registry import registry
 
 
+SUPPORTED_OUTPUT_TYPES = (
+    "simulation_without_da",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+    "auto_forecast_with_da",
+    "auto_forecast_without_da",
+)
+
+LEGACY_OUTPUT_ALIASES = {
+    "simulate": "simulation_without_da",
+    "simulation_with_da": "simulation_with_da",
+    "forecast_with_da": "forecast_with_da",
+    "forecast_without_da": "forecast_without_da",
+}
+
+
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
 def _safe_list(value: Any) -> list[Any]:
-    """
-    Convert a value to list safely.
-
-    Returns an empty list for non-list inputs.
-    """
     return value if isinstance(value, list) else []
 
 
 def _safe_dict(value: Any) -> dict[str, Any]:
-    """
-    Convert a value to dict safely.
-
-    Returns an empty dict for non-dict inputs.
-    """
     return value if isinstance(value, dict) else {}
+
+
+def _normalize_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_output_type(value: Any, default: str = "forecast_with_da") -> str:
+    text = _normalize_text(value)
+    if not text:
+        return default
+    if text in SUPPORTED_OUTPUT_TYPES:
+        return text
+    mapped = LEGACY_OUTPUT_ALIASES.get(text)
+    if mapped:
+        return mapped
+    return default
 
 
 def _should_publish_to_forecast(task_type: str) -> bool:
     """
-    Decide whether this run type should be published to Forecast page.
-
     Current business rule:
     - only auto_forecast results are published into forecast_registry
-
-    Future extension:
-    - this can be expanded to include additional task types if needed
     """
-    return str(task_type or "").strip() == "auto_forecast"
+    return _normalize_text(task_type) == "auto_forecast"
 
 
 def _build_site_run_payload(run: dict[str, Any]) -> dict[str, Any]:
     """
     Build the payload sent from Runner to Site /run.
-
-    Notes:
-    - payload_json is the original Runner-side submission payload
-    - Dispatcher injects run-level metadata expected by Site
-    - Site can use run_id as the stable root directory / manifest key
     """
     payload: dict[str, Any]
     try:
@@ -103,15 +116,6 @@ async def _post_run_to_site(
 ) -> dict[str, Any]:
     """
     Trigger site execution via POST /run.
-
-    Expected behavior:
-    - Site executes the requested task
-    - Site may return a lightweight execution summary
-    - Site may optionally return the final manifest inline
-
-    Return:
-    - parsed JSON dict on success
-    - {} if the response body is empty / not a dict
     """
     async with httpx.AsyncClient(timeout=SITE_REQUEST_TIMEOUT) as client:
         resp = await client.post(f"{base_url.rstrip('/')}/run", json=site_payload)
@@ -130,10 +134,7 @@ async def _fetch_manifest_from_site(
     run_id: str,
 ) -> dict[str, Any]:
     """
-    Fetch run manifest from Site via GET /runs/{run_id}/manifest.
-
-    This is the canonical way Runner retrieves the final artifact declaration
-    after the Site finishes execution.
+    Fetch canonical run manifest from Site.
     """
     async with httpx.AsyncClient(timeout=SITE_REQUEST_TIMEOUT) as client:
         resp = await client.get(f"{base_url.rstrip('/')}/runs/{run_id}/manifest")
@@ -143,9 +144,6 @@ async def _fetch_manifest_from_site(
 
 
 async def _resolve_site_base_url(site_id: str) -> str:
-    """
-    Resolve one site's base_url from the site registry.
-    """
     site = registry.get_site(site_id)
     if not site:
         raise ValueError(f"Site not found in registry: {site_id}")
@@ -159,13 +157,11 @@ async def _resolve_site_base_url(site_id: str) -> str:
 
 def _extract_inline_manifest(site_response: dict[str, Any] | None) -> dict[str, Any]:
     """
-    Extract an inline manifest from Site /run response when present.
+    Extract inline manifest from Site /run response when present.
 
-    Supported shapes:
+    Supported:
     - {"manifest": {...}}
     - {"data": {"manifest": {...}}}
-
-    If no inline manifest is present, return {}.
     """
     site_response = _safe_dict(site_response)
 
@@ -181,6 +177,37 @@ def _extract_inline_manifest(site_response: dict[str, Any] | None) -> dict[str, 
     return {}
 
 
+def _site_response_indicates_failure(site_response: dict[str, Any] | None) -> str:
+    """
+    Inspect site /run response for explicit failure indication.
+    """
+    site_response = _safe_dict(site_response)
+
+    status = _normalize_text(site_response.get("status") or site_response.get("execution_status")).lower()
+    if status in {"failed", "error", "cancelled"}:
+        return _normalize_text(site_response.get("detail") or site_response.get("message") or "Site returned failure status")
+
+    ok_val = site_response.get("ok")
+    if ok_val is False:
+        return _normalize_text(site_response.get("detail") or site_response.get("message") or "Site returned ok=false")
+
+    return ""
+
+
+def _manifest_indicates_failure(manifest: dict[str, Any] | None) -> str:
+    """
+    Inspect canonical manifest for explicit execution failure.
+    """
+    manifest = _safe_dict(manifest)
+    execution = _safe_dict(manifest.get("execution"))
+
+    status = _normalize_text(execution.get("status")).lower()
+    if status and status not in {"done", "completed", "succeeded", "success"}:
+        return _normalize_text(execution.get("error") or execution.get("message") or f"Manifest execution status is {status}")
+
+    return ""
+
+
 def _normalize_manifest_for_runner(manifest: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize site manifest into Runner-expected shape.
@@ -188,13 +215,45 @@ def _normalize_manifest_for_runner(manifest: dict[str, Any]) -> dict[str, Any]:
     Compatibility rules:
     - prefer manifest["forecast_registry"] when already present
     - if missing, upgrade legacy manifest["publish_forecast"] into forecast_registry
-      using outputs.index to fill data_path / source_ref
+    - normalize output_type / series_type
+    - normalize old forecast_mode -> output_type/series_type
     """
     manifest = _safe_dict(manifest)
 
-    if isinstance(manifest.get("forecast_registry"), list):
+    # ---------------------------------------------------------
+    # Case 1: canonical forecast_registry already exists
+    # ---------------------------------------------------------
+    raw_registry = manifest.get("forecast_registry")
+    if isinstance(raw_registry, list):
+        normalized_items: list[dict[str, Any]] = []
+
+        for item in raw_registry:
+            if not isinstance(item, dict):
+                continue
+
+            obj = dict(item)
+
+            normalized_output_type = _normalize_output_type(
+                obj.get("output_type") or obj.get("series_type") or obj.get("forecast_mode"),
+                default="forecast_with_da",
+            )
+            obj["output_type"] = normalized_output_type
+            obj["series_type"] = normalized_output_type
+
+            source_ref = _safe_dict(obj.get("source_ref"))
+            if source_ref:
+                source_ref["output_type"] = normalized_output_type
+                source_ref["series_type"] = normalized_output_type
+                obj["source_ref"] = source_ref
+
+            normalized_items.append(obj)
+
+        manifest["forecast_registry"] = normalized_items
         return manifest
 
+    # ---------------------------------------------------------
+    # Case 2: upgrade legacy publish_forecast -> forecast_registry
+    # ---------------------------------------------------------
     legacy_items = manifest.get("publish_forecast")
     if not isinstance(legacy_items, list):
         return manifest
@@ -208,26 +267,37 @@ def _normalize_manifest_for_runner(manifest: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(item, dict):
             continue
 
-        model_id = str(item.get("model_id") or "").strip()
-        treatment = str(item.get("treatment") or "").strip()
-        variable = str(item.get("variable") or "").strip()
+        model_id = _normalize_text(item.get("model_id"))
+        treatment = _normalize_text(item.get("treatment"))
+        variable = _normalize_text(item.get("variable"))
 
         if not model_id or not treatment or not variable:
             continue
 
+        output_type = _normalize_output_type(
+            item.get("output_type") or item.get("series_type") or item.get("forecast_mode"),
+            default="forecast_with_da",
+        )
+
         model_block = _safe_dict(index_obj.get(model_id))
         treatment_block = _safe_dict(model_block.get(treatment))
-        rel_path = str(treatment_block.get(variable) or "").strip()
+        series_block = _safe_dict(treatment_block.get(output_type))
+        rel_path = _normalize_text(series_block.get(variable))
 
         normalized_items.append(
             {
                 "model_id": model_id,
                 "treatment": treatment,
                 "variable": variable,
+                "output_type": output_type,
+                "series_type": output_type,
                 "data_path": rel_path,
+                "obs_path": _normalize_text(item.get("obs_path")),
                 "source_ref": {
                     "rel_path": rel_path,
                     "media_type": "application/json",
+                    "output_type": output_type,
+                    "series_type": output_type,
                 },
                 "is_published": 1,
             }
@@ -247,27 +317,6 @@ async def _dispatch_once(
 ) -> dict[str, Any]:
     """
     Internal dispatch implementation shared by public APIs.
-
-    High-level flow:
-    1) load run from Runner DB
-    2) resolve Site base URL
-    3) mark run as running
-    4) POST /run to Site
-    5) obtain final manifest
-       - fetch canonical /runs/{run_id}/manifest when available
-       - otherwise fall back to inline manifest from Site /run response
-    6) normalize manifest for Runner compatibility
-    7) register manifest artifacts into run_outputs
-    8) publish manifest forecast rows when task_type is eligible
-    9) mark run as done
-
-    Returns:
-    {
-        "run": {...},
-        "manifest": {...} | None,
-        "published": [...],
-        "site_response": {...} | None
-    }
     """
     run = await get_run(run_id)
     if run is None:
@@ -299,12 +348,12 @@ async def _dispatch_once(
             site_payload=site_payload,
         )
 
+        fail_msg = _site_response_indicates_failure(site_response)
+        if fail_msg:
+            raise RuntimeError(fail_msg)
+
         # -------------------------------------------------------------
         # Step 3: obtain final manifest
-        #
-        # Canonical preference:
-        # - always try GET /runs/{run_id}/manifest first
-        # - if that is unavailable, fall back to inline manifest
         # -------------------------------------------------------------
         inline_manifest = _extract_inline_manifest(site_response)
 
@@ -324,31 +373,17 @@ async def _dispatch_once(
 
         manifest = _normalize_manifest_for_runner(manifest)
 
+        fail_msg = _manifest_indicates_failure(manifest)
+        if fail_msg:
+            raise RuntimeError(fail_msg)
+
         # -------------------------------------------------------------
         # Step 4: register run outputs
-        #
-        # Important design:
-        # - Runner does not special-case parameter artifacts
-        # - Site should declare *all* artifacts in manifest["artifacts"]
-        # - That includes:
-        #   * timeseries
-        #   * plots
-        #   * CSV/JSON tables
-        #   * parameter_summary
-        #   * parameter_posterior
-        #   * parameter_hist
-        # - Runner stores them uniformly in run_outputs
         # -------------------------------------------------------------
         await replace_run_outputs_from_manifest(run_id, manifest)
 
         # -------------------------------------------------------------
         # Step 5: publish to forecast_registry when eligible
-        #
-        # Current rule:
-        # - only auto_forecast publishes Forecast-page visible rows
-        #
-        # Site is expected to declare those rows in:
-        # manifest["forecast_registry"]
         # -------------------------------------------------------------
         if _should_publish_to_forecast(run.get("task_type", "")):
             published_rows = await publish_from_manifest(
@@ -406,18 +441,6 @@ async def _dispatch_once(
 async def dispatch_run(run_id: str) -> dict[str, Any]:
     """
     Dispatch one run to the target Site and return the final Runner run row.
-
-    Success flow:
-    1) load run from Runner DB
-    2) mark run as running
-    3) POST /run to Site
-    4) fetch / infer manifest
-    5) register artifacts into run_outputs
-    6) publish forecast rows if task type is eligible
-    7) mark run as done
-
-    Failure behavior:
-    - mark run as failed with a readable error message
     """
     result = await _dispatch_once(run_id, collect_details=False)
     return result["run"]
@@ -426,15 +449,5 @@ async def dispatch_run(run_id: str) -> dict[str, Any]:
 async def dispatch_run_and_collect(run_id: str) -> dict[str, Any]:
     """
     Dispatch one run and return a richer debug payload.
-
-    Output shape:
-    {
-        "run": {...},
-        "manifest": {...} | None,
-        "published": [...],
-        "site_response": {...} | None
-    }
-
-    This helper is useful for admin/debug endpoints and integration tests.
     """
     return await _dispatch_once(run_id, collect_details=True)

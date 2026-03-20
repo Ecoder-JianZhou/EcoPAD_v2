@@ -1,0 +1,3 @@
+#!/bin/bash
+gfortran test.f90 -o TECO.out
+./TECO.out input/process-based-TECO_input/SPRUCE_pars.txt input/process-based-TECO_input/outputs_co2/SPRUCE_forcing_plot17.txt input/process-based-TECO_input/SPRUCE_obs.txt output/process-based-TECO_output/ 0 input/process-based-TECO_input/SPRUCE_da_pars.txt

@@ -114,8 +114,6 @@ async def api_health():
 async def list_sites():
     """
     Return enabled site records.
-
-    Useful for debugging and simple admin inspection.
     """
     return {
         "sites": registry.list_sites(enabled_only=True),

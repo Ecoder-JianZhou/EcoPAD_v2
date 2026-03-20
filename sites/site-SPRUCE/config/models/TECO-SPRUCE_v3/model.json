@@ -1,0 +1,28 @@
+{
+  "id": "TECO-SPRUCE_v3",
+  "name": "TECO-SPRUCE_v3",
+  "description": "TECO-SPRUCE_v3",
+  "tasks": {
+    "simulate": {
+      "enabled": true,
+      "desc": "Run one deterministic simulation.",
+      "command": ["bash", "/app/runtime/bin/MODEL-template_2_simulate.sh", "{run_dir}"]
+    },
+    "forecast": {
+      "enabled": true,
+      "desc": "Generate forecast outputs.",
+      "command": ["bash", "/app/runtime/bin/MODEL-template_2_forecast.sh", "{run_dir}"]
+    },
+    "auto_forecast": {
+      "enabled": false,
+      "desc": "Not supported for this model.",
+      "command": []
+    },
+    "mcmc": {
+      "enabled": false,
+      "desc": "Not supported for this model.",
+      "command": []
+    }
+  },
+  "default_publish_variables": ["GPP", "NEE"]
+}

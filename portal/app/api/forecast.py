@@ -11,6 +11,45 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+SUPPORTED_OUTPUT_TYPES = (
+    "simulation_without_da",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+    "auto_forecast_with_da",
+    "auto_forecast_without_da",
+)
+
+LEGACY_OUTPUT_ALIASES = {
+    "simulate": "simulation_without_da",
+    "simulation_with_da": "simulation_with_da",
+    "forecast_with_da": "forecast_with_da",
+    "forecast_without_da": "forecast_without_da",
+}
+
+
+def _normalize_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_output_type(value: Any, default: str = "") -> str:
+    text = _normalize_text(value)
+    if not text:
+        return default
+
+    if text in SUPPORTED_OUTPUT_TYPES:
+        return text
+
+    mapped = LEGACY_OUTPUT_ALIASES.get(text)
+    if mapped:
+        return mapped
+
+    return default
+
+
+# ---------------------------------------------------------------------
 # Runner proxy helpers
 # ---------------------------------------------------------------------
 async def _runner_request(
@@ -92,8 +131,12 @@ async def forecast_runs(
     variable: str = Query(default="", description="Variable name, e.g. GPP"),
     task_type: str = Query(default="", description="Optional task type"),
     scheduled_task_id: int | None = Query(default=None, description="Optional schedule task id"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
     limit: int = Query(default=200, ge=1, le=1000),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
     params: dict[str, Any] = {
         "models": models,
         "treatments": treatments,
@@ -101,8 +144,13 @@ async def forecast_runs(
         "task_type": task_type,
         "limit": limit,
     }
+
     if scheduled_task_id is not None:
         params["scheduled_task_id"] = scheduled_task_id
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type  # compat for older runner paths
 
     return await _runner_get(
         f"/api/forecast/{site_id}/runs",
@@ -118,14 +166,24 @@ async def forecast_run_timeseries(
     variable: str = Query(..., description="Variable name, e.g. GPP"),
     model: str = Query(..., description="Model ID"),
     treatment: str = Query(..., description="Treatment ID"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "variable": variable,
+        "model": model,
+        "treatment": treatment,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/forecast/{site_id}/runs/{run_id}/timeseries",
-        params={
-            "variable": variable,
-            "model": model,
-            "treatment": treatment,
-        },
+        params=params,
         timeout=20.0,
     )
 
@@ -136,14 +194,26 @@ async def forecast_data(
     variable: str = Query(..., description="Variable name, e.g. GPP"),
     models: str = Query(default="", description="Comma-separated model IDs"),
     treatments: str = Query(default="", description="Comma-separated treatment IDs"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
+    show_obs: bool = Query(default=False, description="Whether to include obs in runner response"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "variable": variable,
+        "models": models,
+        "treatments": treatments,
+        "show_obs": show_obs,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/forecast/{site_id}/data",
-        params={
-            "variable": variable,
-            "models": models,
-            "treatments": treatments,
-        },
+        params=params,
         timeout=20.0,
     )
 
@@ -152,12 +222,14 @@ async def forecast_data(
 async def forecast_obs(
     site_id: str,
     variable: str = Query(..., description="Variable name, e.g. GPP"),
+    models: str = Query(default="", description="Comma-separated model IDs"),
     treatments: str = Query(default="", description="Comma-separated treatment IDs"),
 ):
     return await _runner_get(
         f"/api/forecast/{site_id}/obs",
         params={
             "variable": variable,
+            "models": models,
             "treatments": treatments,
         },
         timeout=15.0,
@@ -189,14 +261,24 @@ async def forecast_params_latest(
     model: str = Query(..., description="Model ID"),
     treatment: str = Query(..., description="Treatment ID"),
     variable: str = Query(..., description="Forecast variable, e.g. GPP"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "model": model,
+        "treatment": treatment,
+        "variable": variable,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/forecast/{site_id}/params/latest",
-        params={
-            "model": model,
-            "treatment": treatment,
-            "variable": variable,
-        },
+        params=params,
         timeout=15.0,
     )
 
@@ -211,15 +293,25 @@ async def forecast_params_history(
     models: str = Query(default="", description="Comma-separated model IDs"),
     treatments: str = Query(default="", description="Comma-separated treatment IDs"),
     variable: str = Query(default="GPP", description="Reference forecast variable"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "param": param,
+        "models": models,
+        "treatments": treatments,
+        "variable": variable,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/forecast/{site_id}/params/history",
-        params={
-            "param": param,
-            "models": models,
-            "treatments": treatments,
-            "variable": variable,
-        },
+        params=params,
         timeout=20.0,
     )
 
@@ -256,13 +348,23 @@ async def forecast_run_parameter_summary(
     run_id: str,
     model: str = Query(..., description="Model ID"),
     treatment: str = Query(..., description="Treatment ID"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "model": model,
+        "treatment": treatment,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/workflow/runs/{run_id}/parameter_summary",
-        params={
-            "model": model,
-            "treatment": treatment,
-        },
+        params=params,
         timeout=15.0,
     )
 
@@ -273,12 +375,22 @@ async def forecast_run_parameters_accepted(
     run_id: str,
     model: str = Query(..., description="Model ID"),
     treatment: str = Query(..., description="Treatment ID"),
+    output_type: str = Query(default="", description="Output type"),
+    series_type: str = Query(default="", description="Backward-compatible alias"),
 ):
+    resolved_output_type = _normalize_output_type(output_type or series_type, default="")
+
+    params: dict[str, Any] = {
+        "model": model,
+        "treatment": treatment,
+    }
+
+    if resolved_output_type:
+        params["output_type"] = resolved_output_type
+        params["series_type"] = resolved_output_type
+
     return await _runner_get(
         f"/api/workflow/runs/{run_id}/parameters_accepted",
-        params={
-            "model": model,
-            "treatment": treatment,
-        },
+        params=params,
         timeout=20.0,
     )

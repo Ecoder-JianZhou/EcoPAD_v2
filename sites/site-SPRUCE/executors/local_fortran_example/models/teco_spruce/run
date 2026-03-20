@@ -1,0 +1,7 @@
+# export LANG="en_US.UTF-8"
+curPath=$(readlink -f "$(dirname "$0")")
+echo $curPath
+inFile=$curPath"/"test.f90
+outFile=$curPath"/"test
+gfortran $inFile -o $outFile
+$outFile $1 $2 $3

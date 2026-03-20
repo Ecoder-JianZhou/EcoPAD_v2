@@ -1,0 +1,25 @@
+{
+  "variables": [
+    {
+      "name": "GPP",
+      "full_name": "Gross Primary Productivity",
+      "unit": "g C m-2 d-1",
+      "desc": "Gross primary productivity",
+      "output_file": "GPP.json"
+    },
+    {
+      "name": "ER",
+      "full_name": "Ecosystem Respiration",
+      "unit": "g C m-2 d-1",
+      "desc": "Total ecosystem respiration",
+      "output_file": "ER.json"
+    },
+    {
+      "name": "NEE",
+      "full_name": "Net Ecosystem Exchange",
+      "unit": "g C m-2 d-1",
+      "desc": "Net ecosystem exchange",
+      "output_file": "NEE.json"
+    }
+  ]
+}

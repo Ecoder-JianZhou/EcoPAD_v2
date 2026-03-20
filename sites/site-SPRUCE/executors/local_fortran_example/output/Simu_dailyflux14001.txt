@@ -1,0 +1,1 @@
+ sdoy, GPP_d, NEE_d, Reco_d, NPP_d, Ra_d, QC1, QC2, QC3, QC4, QC5, QC6, QC7, QC8, Rh_d

@@ -26,6 +26,23 @@ from app.services.site_registry import registry
 router = APIRouter(prefix="/api/forecast", tags=["forecast"])
 
 
+SUPPORTED_OUTPUT_TYPES = (
+    "simulation_without_da",
+    "simulation_with_da",
+    "forecast_with_da",
+    "forecast_without_da",
+    "auto_forecast_with_da",
+    "auto_forecast_without_da",
+)
+
+LEGACY_OUTPUT_ALIASES = {
+    "simulate": "simulation_without_da",
+    "simulation_with_da": "simulation_with_da",
+    "forecast_with_da": "forecast_with_da",
+    "forecast_without_da": "forecast_without_da",
+}
+
+
 # ---------------------------------------------------------------------
 # Generic helpers
 # ---------------------------------------------------------------------
@@ -52,6 +69,69 @@ def _coerce_float(value: Any) -> float | None:
         return float(value)
     except Exception:
         return None
+
+
+def _normalize_task_type(value: Any) -> str:
+    text = str(value or "").strip().lower()
+
+    mapping = {
+        "simulate": "simulation_without_da",
+        "simulation_without_da": "simulation_without_da",
+        "simulation without da": "simulation_without_da",
+        "simulation_with_da": "simulation_with_da",
+        "simulation with da": "simulation_with_da",
+        "forecast_with_da": "forecast_with_da",
+        "forecast with da": "forecast_with_da",
+        "forecast_without_da": "forecast_without_da",
+        "forecast without da": "forecast_without_da",
+        "auto_forecast": "auto_forecast",
+        "auto forecast": "auto_forecast",
+    }
+    return mapping.get(text, text)
+
+
+def _normalize_output_type(value: Any, default: str = "forecast_with_da") -> str:
+    text = str(value or "").strip()
+    if not text:
+        return default
+
+    if text in SUPPORTED_OUTPUT_TYPES:
+        return text
+
+    mapped = LEGACY_OUTPUT_ALIASES.get(text)
+    if mapped:
+        return mapped
+
+    return default
+
+
+def _normalize_catalog_output_type(value: Any, task_type: Any = "") -> str:
+    raw = str(value or "").strip()
+    if raw:
+        return _normalize_output_type(raw)
+
+    task = _normalize_task_type(task_type)
+    if task == "auto_forecast":
+        return "auto_forecast_with_da"
+    if task == "simulation_without_da":
+        return "simulation_without_da"
+    if task == "simulation_with_da":
+        return "simulation_with_da"
+    if task == "forecast_with_da":
+        return "forecast_with_da"
+    if task == "forecast_without_da":
+        return "forecast_without_da"
+
+    return ""
+
+
+def _output_type_to_registry_series_type(output_type: str) -> str:
+    output_type = _normalize_output_type(output_type, default="")
+    if output_type == "auto_forecast_with_da":
+        return "forecast_with_da"
+    if output_type == "auto_forecast_without_da":
+        return "forecast_without_da"
+    return output_type
 
 
 def _require_site_enabled(site_id: str) -> dict[str, Any]:
@@ -84,6 +164,27 @@ def _format_run_label(value: str) -> str:
     return text
 
 
+def _extract_parameter_time(parameter: dict[str, Any] | None, row: dict[str, Any] | None = None) -> str:
+    """
+    Prefer parameter-specific analysis/data time over run submission time.
+    """
+    parameter = parameter if isinstance(parameter, dict) else {}
+    row = row if isinstance(row, dict) else {}
+
+    for key in (
+        "data_time",
+        "data_end_time",
+        "analysis_time",
+        "obs_end_time",
+        "time",
+    ):
+        value = str(parameter.get(key) or row.get(key) or "").strip()
+        if value:
+            return value
+
+    return ""
+
+
 # ---------------------------------------------------------------------
 # Response shapers
 # ---------------------------------------------------------------------
@@ -95,9 +196,16 @@ def _shape_parameter_history_response(
     *,
     site_id: str,
     param_id: str,
+    output_type: str,
     series_items: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    return {"site_id": site_id, "param": param_id, "series": series_items}
+    return {
+        "site_id": site_id,
+        "param": param_id,
+        "output_type": output_type,
+        "series_type": output_type,
+        "series": series_items,
+    }
 
 
 def _shape_latest_params_response(
@@ -106,6 +214,7 @@ def _shape_latest_params_response(
     model_id: str,
     treatment: str,
     variable: str,
+    output_type: str,
     forecast_row: dict[str, Any] | None,
     run_row: dict[str, Any] | None,
     artifact_row: dict[str, Any] | None,
@@ -125,6 +234,8 @@ def _shape_latest_params_response(
         "model_id": model_id,
         "treatment": treatment,
         "variable": variable,
+        "output_type": output_type,
+        "series_type": output_type,
         "source_run_id": source_run_id,
         "scheduled_task_id": scheduled_task_id,
         "forecast": forecast_row or None,
@@ -263,20 +374,24 @@ async def _resolve_requested_models_and_treatments(
     return requested_models, requested_treatments, summary
 
 
-async def _find_latest_forecast_for_series(
+async def _find_latest_forecast_for_output_type(
     *,
     site_id: str,
     model_id: str,
     treatment: str,
     variable: str,
+    output_type: str,
     site_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
+    registry_series_type = _output_type_to_registry_series_type(output_type)
+
     if variable:
         latest = await get_latest_forecast(
             site_id=site_id,
             model_id=model_id,
             variable=variable,
             treatment=treatment,
+            series_type=registry_series_type,
             published_only=True,
         )
         if latest:
@@ -289,6 +404,7 @@ async def _find_latest_forecast_for_series(
             model_id=model_id,
             variable=str(var_name),
             treatment=treatment,
+            series_type=registry_series_type,
             published_only=True,
         )
         if latest:
@@ -303,11 +419,17 @@ async def _get_run_parameter_summary(
     run_id: str,
     model_id: str,
     treatment: str,
+    output_type: str = "",
 ) -> dict[str, Any] | None:
     raw = await _site_get_json(
         site_id=site_id,
         path=f"/runs/{run_id}/parameter_summary",
-        params={"model": model_id, "treatment": treatment},
+        params={
+            "model": model_id,
+            "treatment": treatment,
+            "output_type": output_type,
+            "series_type": output_type,
+        },
         timeout=SITE_REQUEST_TIMEOUT,
     )
     return raw if isinstance(raw, dict) else None
@@ -319,11 +441,17 @@ async def _get_run_parameter_best(
     run_id: str,
     model_id: str,
     treatment: str,
+    output_type: str = "",
 ) -> dict[str, Any] | None:
     raw = await _site_get_json(
         site_id=site_id,
         path=f"/runs/{run_id}/parameter_best",
-        params={"model": model_id, "treatment": treatment},
+        params={
+            "model": model_id,
+            "treatment": treatment,
+            "output_type": output_type,
+            "series_type": output_type,
+        },
         timeout=SITE_REQUEST_TIMEOUT,
     )
     return raw if isinstance(raw, dict) else None
@@ -342,6 +470,8 @@ async def forecast_meta(site_id: str) -> dict[str, Any]:
     _require_site_enabled(site_id)
 
     site_meta = await _get_site_meta(site_id)
+    summary = await _get_site_summary(site_id)
+
     registry_models = await list_latest_models(site_id)
     registry_variables = await list_latest_variables(site_id)
     registry_treatments = await list_latest_treatments(site_id)
@@ -358,9 +488,15 @@ async def forecast_meta(site_id: str) -> dict[str, Any]:
     if not isinstance(treatments, list) or not treatments:
         treatments = registry_treatments
 
+    output_types = site_meta.get("output_types")
+    if not isinstance(output_types, list) or not output_types:
+        output_types = _safe_list(summary.get("series_types"))
+
     site_meta["models"] = models or []
     site_meta["variables"] = variables or []
     site_meta["treatments"] = treatments or []
+    site_meta["output_types"] = output_types or []
+    site_meta["series_types"] = output_types or []
     return site_meta
 
 
@@ -377,9 +513,14 @@ async def forecast_runs(
     variable: str = Query(""),
     task_type: str = Query(""),
     scheduled_task_id: int | None = Query(default=None),
+    output_type: str = Query(default="forecast_with_da"),
+    series_type: str = Query(default=""),
     limit: int = Query(default=200, ge=1, le=1000),
 ) -> dict[str, Any]:
     _require_site_enabled(site_id)
+
+    resolved_output_type = _normalize_output_type(output_type or series_type)
+    resolved_task_type = _normalize_task_type(task_type)
 
     requested_models = _parse_csv_arg(models)
     requested_treatments = _parse_csv_arg(treatments)
@@ -390,30 +531,44 @@ async def forecast_runs(
         models=requested_models,
         treatments=requested_treatments,
         variable=clean_variable,
-        task_type=str(task_type or "").strip(),
+        task_type=resolved_task_type,
         scheduled_task_id=scheduled_task_id,
         limit=limit,
     )
 
+    filtered_rows: list[dict[str, Any]] = []
+    for row in rows:
+        row_output_type = _normalize_catalog_output_type(
+            row.get("catalog_output_type") or row.get("output_type") or row.get("series_type"),
+            row.get("task_type"),
+        )
+
+        if row_output_type and row_output_type != resolved_output_type:
+            if _normalize_task_type(row.get("task_type")) == "auto_forecast":
+                continue
+
+        filtered_rows.append(row)
+
     latest_run_ids: set[str] = set()
     if clean_variable:
         seen_pairs: set[tuple[str, str]] = set()
-        for row in rows:
+        for row in filtered_rows:
             model_id = str(row.get("catalog_model_id") or row.get("model_id") or "").strip()
             treatment = str(row.get("catalog_treatment") or "").strip()
             if not model_id or not treatment:
                 continue
+
             key = (model_id, treatment)
             if key in seen_pairs:
                 continue
             seen_pairs.add(key)
 
-            latest = await get_latest_forecast(
+            latest = await _find_latest_forecast_for_output_type(
                 site_id=site_id,
                 model_id=model_id,
-                variable=clean_variable,
                 treatment=treatment,
-                published_only=True,
+                variable=clean_variable,
+                output_type=resolved_output_type,
             )
             if latest:
                 source_run_id = str(latest.get("source_run_id") or "").strip()
@@ -421,7 +576,7 @@ async def forecast_runs(
                     latest_run_ids.add(source_run_id)
 
     items: list[dict[str, Any]] = []
-    for row in rows:
+    for row in filtered_rows:
         run_id = str(row.get("id") or "").strip()
         run_time = str(
             row.get("finished_at")
@@ -429,6 +584,11 @@ async def forecast_runs(
             or row.get("created_at")
             or ""
         ).strip()
+
+        row_output_type = _normalize_catalog_output_type(
+            row.get("catalog_output_type") or row.get("output_type") or row.get("series_type"),
+            row.get("task_type"),
+        ) or resolved_output_type
 
         items.append(
             {
@@ -446,7 +606,9 @@ async def forecast_runs(
                 "model_id": row.get("catalog_model_id") or row.get("model_id") or "",
                 "treatment": row.get("catalog_treatment") or "",
                 "variable": clean_variable or row.get("catalog_variable") or "",
-                "task_type": row.get("task_type") or "",
+                "task_type": _normalize_task_type(row.get("task_type") or ""),
+                "output_type": row_output_type,
+                "series_type": row_output_type,
                 "is_latest_published": run_id in latest_run_ids,
             }
         )
@@ -461,8 +623,12 @@ async def forecast_run_timeseries(
     variable: str = Query(...),
     model: str = Query(...),
     treatment: str = Query(...),
+    output_type: str = Query(default=""),
+    series_type: str = Query(default="forecast_with_da"),
 ) -> dict[str, Any] | list[Any]:
     _require_site_enabled(site_id)
+    resolved_output_type = _normalize_output_type(output_type or series_type)
+
     return await _require_site_json(
         site_id=site_id,
         path=f"/runs/{run_id}/timeseries",
@@ -470,6 +636,8 @@ async def forecast_run_timeseries(
             "variable": variable,
             "model": model,
             "treatment": treatment,
+            "output_type": resolved_output_type,
+            "series_type": resolved_output_type,
         },
         timeout=SITE_REQUEST_TIMEOUT,
     )
@@ -481,8 +649,13 @@ async def forecast_data(
     variable: str = Query(...),
     models: str = Query(""),
     treatments: str = Query(""),
+    output_type: str = Query(default=""),
+    series_type: str = Query(default="forecast_with_da"),
+    show_obs: bool = Query(default=False),
 ) -> dict[str, Any]:
     _require_site_enabled(site_id)
+
+    resolved_output_type = _normalize_output_type(output_type or series_type)
 
     requested_models, requested_treatments, summary = await _resolve_requested_models_and_treatments(
         site_id=site_id,
@@ -498,11 +671,12 @@ async def forecast_data(
 
     for model_id in requested_models:
         for treatment in requested_treatments:
-            latest = await _find_latest_forecast_for_series(
+            latest = await _find_latest_forecast_for_output_type(
                 site_id=site_id,
                 model_id=model_id,
                 treatment=treatment,
                 variable=variable,
+                output_type=resolved_output_type,
                 site_summary=summary,
             )
             if not latest:
@@ -519,6 +693,8 @@ async def forecast_data(
                     "variable": variable,
                     "model": model_id,
                     "treatment": treatment,
+                    "output_type": resolved_output_type,
+                    "series_type": resolved_output_type,
                 },
                 timeout=SITE_REQUEST_TIMEOUT,
             )
@@ -536,15 +712,63 @@ async def forecast_data(
             first = raw_series[0] if isinstance(raw_series[0], dict) else {}
             out_series.append(
                 {
-                    "key": f"{model_id}||{treatment}",
+                    "key": f"{model_id}||{treatment}||{resolved_output_type}",
+                    "kind": "forecast",
+                    "output_type": resolved_output_type,
+                    "series_type": resolved_output_type,
                     "model": model_id,
                     "treatment": treatment,
                     "time": first.get("time") or [],
                     "mean": first.get("mean") or [],
                     "lo": first.get("lo") or first.get("q05") or [],
                     "hi": first.get("hi") or first.get("q95") or [],
+                    "source_run_id": source_run_id,
                 }
             )
+
+            if show_obs:
+                obs_data = await _site_get_json(
+                    site_id=site_id,
+                    path="/obs",
+                    params={
+                        "variable": variable,
+                        "treatment": treatment,
+                        "model": model_id,
+                    },
+                    timeout=SITE_REQUEST_TIMEOUT,
+                )
+                if isinstance(obs_data, dict):
+                    if isinstance(obs_data.get("points"), list):
+                        for idx, item in enumerate(obs_data["points"]):
+                            if not isinstance(item, dict):
+                                continue
+                            out_series.append(
+                                {
+                                    "key": f"{model_id}||{treatment}||obs||{idx}",
+                                    "kind": "observation",
+                                    "output_type": resolved_output_type,
+                                    "series_type": resolved_output_type,
+                                    "model": model_id,
+                                    "treatment": item.get("treatment") or treatment,
+                                    "time": item.get("time") or [],
+                                    "value": item.get("value") or [],
+                                    "std": item.get("std") or [],
+                                }
+                            )
+                    else:
+                        out_series.append(
+                            {
+                                "key": f"{model_id}||{treatment}||obs",
+                                "kind": "observation",
+                                "output_type": resolved_output_type,
+                                "series_type": resolved_output_type,
+                                "model": model_id,
+                                "treatment": obs_data.get("treatment") or treatment,
+                                "time": obs_data.get("time") or [],
+                                "value": obs_data.get("value") or [],
+                                "std": obs_data.get("std") or [],
+                            }
+                        )
 
     return _shape_multi_series_response(units=units, items=out_series)
 
@@ -553,49 +777,65 @@ async def forecast_data(
 async def forecast_obs(
     site_id: str,
     variable: str = Query(...),
+    models: str = Query(""),
     treatments: str = Query(""),
 ) -> dict[str, Any]:
     _require_site_enabled(site_id)
 
+    requested_models = _parse_csv_arg(models)
     requested_treatments = _parse_csv_arg(treatments)
-    if not requested_treatments:
-        summary = await _get_site_summary(site_id)
-        requested_treatments = _safe_list(summary.get("treatments"))[:1]
+
+    summary = await _get_site_summary(site_id)
+
+    if not requested_models:
+        requested_models = _safe_list(summary.get("models"))[:1]
 
     if not requested_treatments:
+        requested_treatments = _safe_list(summary.get("treatments"))[:1]
+
+    if not requested_models or not requested_treatments:
         return {"points": []}
 
     points: list[dict[str, Any]] = []
 
-    for treatment in requested_treatments:
-        obs_data = await _site_get_json(
-            site_id=site_id,
-            path="/obs",
-            params={"variable": variable, "treatment": treatment},
-            timeout=SITE_REQUEST_TIMEOUT,
-        )
-        if not isinstance(obs_data, dict):
-            continue
+    for model_id in requested_models:
+        for treatment in requested_treatments:
+            obs_data = await _site_get_json(
+                site_id=site_id,
+                path="/obs",
+                params={
+                    "variable": variable,
+                    "treatment": treatment,
+                    "model": model_id,
+                },
+                timeout=SITE_REQUEST_TIMEOUT,
+            )
+            if not isinstance(obs_data, dict):
+                continue
 
-        if isinstance(obs_data.get("points"), list):
-            for item in obs_data["points"]:
-                if not isinstance(item, dict):
-                    continue
+            if isinstance(obs_data.get("points"), list):
+                for item in obs_data["points"]:
+                    if not isinstance(item, dict):
+                        continue
+                    points.append(
+                        {
+                            "model": model_id,
+                            "treatment": item.get("treatment") or treatment,
+                            "time": item.get("time") or [],
+                            "value": item.get("value") or [],
+                            "std": item.get("std") or [],
+                        }
+                    )
+            else:
                 points.append(
                     {
-                        "treatment": item.get("treatment") or treatment,
-                        "time": item.get("time") or [],
-                        "value": item.get("value") or [],
+                        "model": model_id,
+                        "treatment": obs_data.get("treatment") or treatment,
+                        "time": obs_data.get("time") or [],
+                        "value": obs_data.get("value") or [],
+                        "std": obs_data.get("std") or [],
                     }
                 )
-        else:
-            points.append(
-                {
-                    "treatment": treatment,
-                    "time": obs_data.get("time") or [],
-                    "value": obs_data.get("value") or [],
-                }
-            )
 
     return {"points": points}
 
@@ -620,14 +860,18 @@ async def forecast_params_latest(
     model: str = Query(...),
     treatment: str = Query(...),
     variable: str = Query(...),
+    output_type: str = Query(default=""),
+    series_type: str = Query(default="forecast_with_da"),
 ) -> dict[str, Any]:
     _require_site_enabled(site_id)
+    resolved_output_type = _normalize_output_type(output_type or series_type)
 
     latest = await get_latest_forecast(
         site_id=site_id,
         model_id=model,
         variable=variable,
         treatment=treatment,
+        series_type=_output_type_to_registry_series_type(resolved_output_type),
         published_only=True,
     )
     if not latest:
@@ -636,6 +880,7 @@ async def forecast_params_latest(
             model_id=model,
             treatment=treatment,
             variable=variable,
+            output_type=resolved_output_type,
             forecast_row=None,
             run_row=None,
             artifact_row=None,
@@ -649,6 +894,7 @@ async def forecast_params_latest(
             model_id=model,
             treatment=treatment,
             variable=variable,
+            output_type=resolved_output_type,
             forecast_row=latest,
             run_row=None,
             artifact_row=None,
@@ -660,6 +906,7 @@ async def forecast_params_latest(
         model_id=model,
         treatment=treatment,
         variable=variable,
+        series_type=_output_type_to_registry_series_type(resolved_output_type),
     )
     artifact = await get_first_run_output(source_run_id, "parameter_summary", model_id=model)
     summary = await _get_run_parameter_summary(
@@ -667,6 +914,7 @@ async def forecast_params_latest(
         run_id=source_run_id,
         model_id=model,
         treatment=treatment,
+        output_type=resolved_output_type,
     )
 
     return _shape_latest_params_response(
@@ -674,6 +922,7 @@ async def forecast_params_latest(
         model_id=model,
         treatment=treatment,
         variable=variable,
+        output_type=resolved_output_type,
         forecast_row=latest,
         run_row=latest_run,
         artifact_row=artifact,
@@ -688,179 +937,167 @@ async def forecast_params_history(
     models: str = Query(""),
     treatments: str = Query(""),
     variable: str = Query(""),
+    output_type: str = Query(default=""),
+    series_type: str = Query(default="forecast_with_da"),
 ) -> dict[str, Any]:
     _require_site_enabled(site_id)
+    resolved_output_type = _normalize_output_type(output_type or series_type)
 
-    requested_models, requested_treatments, site_summary = await _resolve_requested_models_and_treatments(
+    requested_models, requested_treatments, _site_summary = await _resolve_requested_models_and_treatments(
         site_id=site_id,
         models=models,
         treatments=treatments,
     )
+
     if not requested_models or not requested_treatments:
-        return _shape_parameter_history_response(site_id=site_id, param_id=param, series_items=[])
+        return _shape_parameter_history_response(
+            site_id=site_id,
+            param_id=param,
+            output_type=resolved_output_type,
+            series_items=[],
+        )
 
     out_series: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, str, str]] = set()
 
     for model_id in requested_models:
         for treatment in requested_treatments:
-            latest_forecast = await _find_latest_forecast_for_series(
+            # 直接查这一组条件下的所有历史 runs
+            rows = await list_runs_catalog(
                 site_id=site_id,
-                model_id=model_id,
-                treatment=treatment,
-                variable=variable,
-                site_summary=site_summary,
+                models=[model_id],
+                treatments=[treatment],
+                variable=variable or "",
+                task_type="",   # 不强制限定，让 forecast / auto_forecast / simulation_with_da 都能进来
+                limit=1000,
             )
-            if not latest_forecast:
-                continue
 
-            source_run_id = str(latest_forecast.get("source_run_id") or "").strip()
-            if not source_run_id:
-                continue
+            for row in rows:
+                run_id = str(row.get("id") or "").strip()
+                if not run_id:
+                    continue
 
-            run_row = await get_run(source_run_id)
-            if not run_row:
-                continue
-
-            scheduled_task_id = run_row.get("scheduled_task_id")
-            emitted_any = False
-
-            if scheduled_task_id is not None:
-                rows = await list_parameter_history_for_schedule(
-                    scheduled_task_id=int(scheduled_task_id),
-                    model_id=model_id,
-                    param_id=param,
-                    treatment=treatment,
-                    artifact_type="parameter_summary",
-                    limit=1000,
+                row_output_type = _normalize_catalog_output_type(
+                    row.get("catalog_output_type") or row.get("output_type") or row.get("series_type"),
+                    row.get("task_type"),
                 )
 
-                for row in rows:
-                    parameter = row.get("parameter")
-                    if not isinstance(parameter, dict):
-                        summary_obj = await _get_run_parameter_summary(
-                            site_id=site_id,
-                            run_id=str(row.get("run_id") or "").strip(),
-                            model_id=model_id,
-                            treatment=treatment,
-                        )
-                        parameter = _extract_parameter_from_summary(summary_obj, param)
+                # 只保留当前页面请求的 output_type
+                if row_output_type != resolved_output_type:
+                    continue
 
-                    if not isinstance(parameter, dict):
-                        continue
+                dedup_key = (run_id, model_id, treatment, resolved_output_type)
+                if dedup_key in seen_keys:
+                    continue
+                seen_keys.add(dedup_key)
 
-                    value = _coerce_float(
+                summary_obj = await _get_run_parameter_summary(
+                    site_id=site_id,
+                    run_id=run_id,
+                    model_id=model_id,
+                    treatment=treatment,
+                    output_type=resolved_output_type,
+                )
+
+                parameter = _extract_parameter_from_summary(summary_obj, param)
+
+                best_value = None
+                q05 = None
+                q95 = None
+
+                if isinstance(parameter, dict):
+                    best_value = _coerce_float(
                         parameter.get("value")
                         or parameter.get("optimized")
                         or parameter.get("mean")
                         or parameter.get("map")
                     )
-                    if value is None:
-                        continue
-
-                    run_time = str(
-                        row.get("run_finished_at")
-                        or row.get("run_updated_at")
-                        or row.get("run_created_at")
-                        or row.get("created_at")
-                        or ""
-                    ).strip()
-                    if not run_time:
-                        continue
-
-                    out_series.append(
-                        {
-                            "model": model_id,
-                            "treatment": treatment,
-                            "run_id": str(row.get("run_id") or "").strip(),
-                            "time": run_time,
-                            "value": value,
-                            "q05": _coerce_float(
-                                parameter.get("p05")
-                                or parameter.get("q05")
-                                or parameter.get("accepted_min")
-                                or parameter.get("minimum")
-                            ),
-                            "q95": _coerce_float(
-                                parameter.get("p95")
-                                or parameter.get("q95")
-                                or parameter.get("accepted_max")
-                                or parameter.get("maximum")
-                            ),
-                        }
+                    q05 = _coerce_float(
+                        parameter.get("p05")
+                        or parameter.get("q05")
+                        or parameter.get("accepted_min")
+                        or parameter.get("minimum")
                     )
-                    emitted_any = True
+                    q95 = _coerce_float(
+                        parameter.get("p95")
+                        or parameter.get("q95")
+                        or parameter.get("accepted_max")
+                        or parameter.get("maximum")
+                    )
 
-            if emitted_any:
-                continue
+                if best_value is None:
+                    best_obj = await _get_run_parameter_best(
+                        site_id=site_id,
+                        run_id=run_id,
+                        model_id=model_id,
+                        treatment=treatment,
+                        output_type=resolved_output_type,
+                    )
+                    best_value = _extract_best_parameter_value(best_obj, param)
 
-            summary_obj = await _get_run_parameter_summary(
-                site_id=site_id,
-                run_id=source_run_id,
-                model_id=model_id,
-                treatment=treatment,
-            )
-            parameter = _extract_parameter_from_summary(summary_obj, param)
+                if best_value is None:
+                    continue
 
-            best_value = None
-            q05 = None
-            q95 = None
+                run_row = await get_run(run_id)
+                if not run_row:
+                    continue
 
-            if isinstance(parameter, dict):
-                best_value = _coerce_float(
-                    parameter.get("value")
-                    or parameter.get("optimized")
-                    or parameter.get("mean")
-                    or parameter.get("map")
+                # 时间优先级：
+                # 1) parameter 本身携带的时间
+                # 2) summary 顶层时间
+                # 3) run finished/updated/created
+                time_value = str(
+                    (
+                        parameter.get("data_time")
+                        if isinstance(parameter, dict) else ""
+                    )
+                    or (
+                        parameter.get("analysis_time")
+                        if isinstance(parameter, dict) else ""
+                    )
+                    or (
+                        parameter.get("time")
+                        if isinstance(parameter, dict) else ""
+                    )
+                    or (
+                        summary_obj.get("data_time")
+                        if isinstance(summary_obj, dict) else ""
+                    )
+                    or (
+                        summary_obj.get("analysis_time")
+                        if isinstance(summary_obj, dict) else ""
+                    )
+                    or run_row.get("finished_at")
+                    or run_row.get("updated_at")
+                    or run_row.get("created_at")
+                    or ""
+                ).strip()
+
+                if not time_value:
+                    continue
+
+                out_series.append(
+                    {
+                        "model": model_id,
+                        "treatment": treatment,
+                        "output_type": resolved_output_type,
+                        "series_type": resolved_output_type,
+                        "run_id": run_id,
+                        "time": time_value,
+                        "value": best_value,
+                        "q05": q05,
+                        "q95": q95,
+                    }
                 )
-                q05 = _coerce_float(
-                    parameter.get("p05")
-                    or parameter.get("q05")
-                    or parameter.get("accepted_min")
-                    or parameter.get("minimum")
-                )
-                q95 = _coerce_float(
-                    parameter.get("p95")
-                    or parameter.get("q95")
-                    or parameter.get("accepted_max")
-                    or parameter.get("maximum")
-                )
 
-            if best_value is None:
-                best_obj = await _get_run_parameter_best(
-                    site_id=site_id,
-                    run_id=source_run_id,
-                    model_id=model_id,
-                    treatment=treatment,
-                )
-                best_value = _extract_best_parameter_value(best_obj, param)
-
-            if best_value is None:
-                continue
-
-            run_time = str(
-                run_row.get("finished_at")
-                or run_row.get("updated_at")
-                or run_row.get("created_at")
-                or ""
-            ).strip()
-            if not run_time:
-                continue
-
-            out_series.append(
-                {
-                    "model": model_id,
-                    "treatment": treatment,
-                    "run_id": source_run_id,
-                    "time": run_time,
-                    "value": best_value,
-                    "q05": q05,
-                    "q95": q95,
-                }
-            )
+    out_series.sort(
+        key=lambda x: str(x.get("time") or "")
+    )
 
     return _shape_parameter_history_response(
         site_id=site_id,
         param_id=param,
+        output_type=resolved_output_type,
         series_items=out_series,
     )
 

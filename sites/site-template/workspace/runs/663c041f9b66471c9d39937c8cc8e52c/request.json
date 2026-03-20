@@ -1,0 +1,35 @@
+{
+  "run_id": "663c041f9b66471c9d39937c8cc8e52c",
+  "scheduled_task_id": null,
+  "site_id": "Example",
+  "model_id": "MODEL-template_1",
+  "task_type": "auto_forecast",
+  "trigger_type": "manual",
+  "payload": {
+    "name": "test2",
+    "site": "Example",
+    "models": [
+      "MODEL-template_1"
+    ],
+    "treatments": [
+      "treatment_1"
+    ],
+    "task": "auto_forecast",
+    "parameters": {
+      "vcmax": 45,
+      "rl0": 0.8,
+      "q10": 2
+    },
+    "da": {
+      "auto_forecast_without_da": true
+    },
+    "notes": "",
+    "submitted_by": "admin",
+    "expected_output_types": [
+      "auto_forecast_with_da",
+      "auto_forecast_without_da"
+    ],
+    "output_type": "auto_forecast_with_da",
+    "series_type": "auto_forecast_with_da"
+  }
+}

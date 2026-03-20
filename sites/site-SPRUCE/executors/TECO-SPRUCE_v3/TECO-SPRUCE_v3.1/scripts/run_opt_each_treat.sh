@@ -1,0 +1,10 @@
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P04.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P04.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P06.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P06.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P08.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P08.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P10.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P10.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P11.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P11.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P13.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P13.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P16.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P16.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P17.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P17.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P19.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P19.log &
+nohup ./teco-spruce.exe conf_opt_each_treat/teco_conf_P20.nml > /mnt/d/2_shared_folder/20251209_test_code/TECO_outputs/simu_opt_params_each_treat/outlogs/out_alltreat_P20.log &

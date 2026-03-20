@@ -5,6 +5,35 @@ import { AccountJobViewerModal } from "../components/account-JobViewerModal.js";
 import { AccountAdminPanel } from "../components/account-AdminPanel.js";
 import { AccountSchedulesPanel } from "../components/account-SchedulesPanel.js";
 
+const SUPPORTED_OUTPUT_TYPES = [
+  "simulation_without_da",
+  "simulation_with_da",
+  "forecast_with_da",
+  "forecast_without_da",
+  "auto_forecast_with_da",
+  "auto_forecast_without_da",
+];
+
+function normalizeText(v) {
+  return String(v || "").trim();
+}
+
+function normalizeOutputType(v) {
+  const s = normalizeText(v);
+  if (!s) return "";
+
+  const mapping = {
+    simulate: "simulation_without_da",
+    simulation_with_da: "simulation_with_da",
+    forecast_with_da: "forecast_with_da",
+    forecast_without_da: "forecast_without_da",
+    auto_forecast_with_da: "auto_forecast_with_da",
+    auto_forecast_without_da: "auto_forecast_without_da",
+  };
+
+  return mapping[s] || s;
+}
+
 function mergeJobsKeepOld(prevJobs, nextJobs) {
   const byId = new Map((prevJobs || []).map((j) => [String(j.id), j]));
 
@@ -15,33 +44,50 @@ function mergeJobsKeepOld(prevJobs, nextJobs) {
       ...prevJob,
       ...nextJob,
 
-      name: (nextJob.name && String(nextJob.name).trim()) ? nextJob.name : prevJob.name,
-      site: (nextJob.site && String(nextJob.site).trim()) ? nextJob.site : prevJob.site,
-      task: (nextJob.task && String(nextJob.task).trim()) ? nextJob.task : prevJob.task,
+      name:
+        nextJob.name && String(nextJob.name).trim()
+          ? nextJob.name
+          : prevJob.name,
 
-      created_at: (nextJob.created_at && String(nextJob.created_at).trim())
-        ? nextJob.created_at
-        : prevJob.created_at,
+      site:
+        nextJob.site && String(nextJob.site).trim()
+          ? nextJob.site
+          : prevJob.site,
 
-      updated_at: (nextJob.updated_at && String(nextJob.updated_at).trim())
-        ? nextJob.updated_at
-        : prevJob.updated_at,
+      task:
+        nextJob.task && String(nextJob.task).trim()
+          ? nextJob.task
+          : prevJob.task,
 
-      finished_at: (nextJob.finished_at && String(nextJob.finished_at).trim())
-        ? nextJob.finished_at
-        : prevJob.finished_at,
+      created_at:
+        nextJob.created_at && String(nextJob.created_at).trim()
+          ? nextJob.created_at
+          : prevJob.created_at,
 
-      started_at: (nextJob.started_at && String(nextJob.started_at).trim())
-        ? nextJob.started_at
-        : prevJob.started_at,
+      updated_at:
+        nextJob.updated_at && String(nextJob.updated_at).trim()
+          ? nextJob.updated_at
+          : prevJob.updated_at,
 
-      models: (Array.isArray(nextJob.models) && nextJob.models.length)
-        ? nextJob.models
-        : (prevJob.models || []),
+      finished_at:
+        nextJob.finished_at && String(nextJob.finished_at).trim()
+          ? nextJob.finished_at
+          : prevJob.finished_at,
 
-      treatments: (Array.isArray(nextJob.treatments) && nextJob.treatments.length)
-        ? nextJob.treatments
-        : (prevJob.treatments || []),
+      started_at:
+        nextJob.started_at && String(nextJob.started_at).trim()
+          ? nextJob.started_at
+          : prevJob.started_at,
+
+      models:
+        Array.isArray(nextJob.models) && nextJob.models.length
+          ? nextJob.models
+          : (prevJob.models || []),
+
+      treatments:
+        Array.isArray(nextJob.treatments) && nextJob.treatments.length
+          ? nextJob.treatments
+          : (prevJob.treatments || []),
 
       scheduled_task_id:
         nextJob.scheduled_task_id !== undefined
@@ -88,6 +134,194 @@ function TabChip({ active, onClick, children }) {
   );
 }
 
+function deriveModels(man) {
+  const out = [];
+  const seen = new Set();
+
+  function add(v) {
+    const s = normalizeText(v);
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  }
+
+  if (Array.isArray(man?.request?.models)) {
+    man.request.models.forEach(add);
+  }
+
+  if (man?.request?.model) {
+    add(man.request.model);
+  }
+
+  const indexObj = man?.outputs?.index;
+  if (indexObj && typeof indexObj === "object") {
+    Object.keys(indexObj).forEach(add);
+  }
+
+  if (Array.isArray(man?.artifacts)) {
+    man.artifacts.forEach((a) => add(a?.model_id));
+  }
+
+  if (man?.model_id) {
+    add(man.model_id);
+  }
+
+  return out;
+}
+
+function deriveTreatments(man, model = "") {
+  const out = [];
+  const seen = new Set();
+
+  function add(v) {
+    const s = normalizeText(v);
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  }
+
+  if (Array.isArray(man?.request?.treatments)) {
+    man.request.treatments.forEach(add);
+  }
+
+  if (man?.request?.treatment) {
+    add(man.request.treatment);
+  }
+
+  const indexObj = man?.outputs?.index;
+  if (indexObj && typeof indexObj === "object") {
+    if (model && indexObj[model] && typeof indexObj[model] === "object") {
+      Object.keys(indexObj[model]).forEach(add);
+    } else {
+      Object.values(indexObj).forEach((modelBlock) => {
+        if (modelBlock && typeof modelBlock === "object") {
+          Object.keys(modelBlock).forEach(add);
+        }
+      });
+    }
+  }
+
+  if (Array.isArray(man?.artifacts)) {
+    man.artifacts.forEach((a) => {
+      const am = normalizeText(a?.model_id);
+      if (!model || am === model) add(a?.treatment);
+    });
+  }
+
+  return out;
+}
+
+function deriveOutputTypes(man, model = "", treatment = "") {
+  const out = [];
+  const seen = new Set();
+
+  function add(v) {
+    const s = normalizeOutputType(v);
+    if (!s || seen.has(s)) return;
+    if (!SUPPORTED_OUTPUT_TYPES.includes(s)) return;
+    seen.add(s);
+    out.push(s);
+  }
+
+  const expected = man?.request?.expected_output_types;
+  if (Array.isArray(expected)) {
+    expected.forEach(add);
+  }
+
+  const indexObj = man?.outputs?.index;
+  if (indexObj && typeof indexObj === "object" && model && treatment) {
+    const treatmentBlock = indexObj?.[model]?.[treatment];
+    if (treatmentBlock && typeof treatmentBlock === "object") {
+      Object.keys(treatmentBlock).forEach(add);
+    }
+  }
+
+  if (Array.isArray(man?.artifacts)) {
+    man.artifacts.forEach((a) => {
+      if (normalizeText(a?.artifact_type) !== "timeseries") return;
+
+      const am = normalizeText(a?.model_id);
+      const at = normalizeText(a?.treatment);
+      const aot = normalizeOutputType(a?.output_type || a?.series_type);
+
+      if ((!model || am === model) && (!treatment || at === treatment)) {
+        add(aot);
+      }
+    });
+  }
+
+  return out;
+}
+
+function deriveVariables(man, model = "", treatment = "", outputType = "") {
+  const out = [];
+  const seen = new Set();
+
+  function add(v) {
+    const s = normalizeText(v);
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  }
+
+  const normalizedOutputType = normalizeOutputType(outputType);
+
+  const indexObj = man?.outputs?.index;
+  if (indexObj && typeof indexObj === "object" && model && treatment) {
+    const treatmentBlock = indexObj?.[model]?.[treatment];
+
+    if (treatmentBlock && typeof treatmentBlock === "object") {
+      if (normalizedOutputType) {
+        const outputBlock = treatmentBlock?.[normalizedOutputType];
+        if (outputBlock && typeof outputBlock === "object") {
+          Object.keys(outputBlock).forEach(add);
+        }
+      } else {
+        Object.values(treatmentBlock).forEach((outputBlock) => {
+          if (outputBlock && typeof outputBlock === "object") {
+            Object.keys(outputBlock).forEach(add);
+          }
+        });
+      }
+    }
+  }
+
+  if (Array.isArray(man?.artifacts)) {
+    man.artifacts.forEach((a) => {
+      if (normalizeText(a?.artifact_type) !== "timeseries") return;
+
+      const am = normalizeText(a?.model_id);
+      const at = normalizeText(a?.treatment);
+      const aot = normalizeOutputType(a?.output_type || a?.series_type);
+
+      if (
+        (!model || am === model) &&
+        (!treatment || at === treatment) &&
+        (!normalizedOutputType || aot === normalizedOutputType)
+      ) {
+        add(a?.variable);
+      }
+    });
+  }
+
+  return out;
+}
+
+function preferredVariable(vars = []) {
+  if (vars.includes("GPP")) return "GPP";
+  return vars[0] || "";
+}
+
+function preferredOutputType(types = []) {
+  if (types.includes("auto_forecast_with_da")) return "auto_forecast_with_da";
+  if (types.includes("auto_forecast_without_da")) return "auto_forecast_without_da";
+  if (types.includes("forecast_with_da")) return "forecast_with_da";
+  if (types.includes("forecast_without_da")) return "forecast_without_da";
+  if (types.includes("simulation_with_da")) return "simulation_with_da";
+  if (types.includes("simulation_without_da")) return "simulation_without_da";
+  return types[0] || "";
+}
+
 export function Account() {
   const e = React.createElement;
   const { auth, navigate, logout } = React.useContext(AppCtx);
@@ -101,16 +335,16 @@ export function Account() {
 
   const [open, setOpen] = React.useState(false);
   const [activeJob, setActiveJob] = React.useState(null);
-  const [variable, setVariable] = React.useState("GPP");
+  const [variable, setVariable] = React.useState("");
   const [result, setResult] = React.useState(null);
 
   const [manifest, setManifest] = React.useState(null);
   const [selModel, setSelModel] = React.useState("");
   const [selTreatment, setSelTreatment] = React.useState("");
+  const [selOutputType, setSelOutputType] = React.useState("");
 
   const isSuperuser = auth.user?.role === "superuser";
 
-  // Admin state
   const [schedulerStatus, setSchedulerStatus] = React.useState(null);
   const [schedulerLoading, setSchedulerLoading] = React.useState(false);
   const [schedulerError, setSchedulerError] = React.useState("");
@@ -140,28 +374,6 @@ export function Account() {
   const [permSaving, setPermSaving] = React.useState(false);
   const [permError, setPermError] = React.useState("");
   const [permNotice, setPermNotice] = React.useState("");
-
-  function deriveModels(man) {
-    if (man?.request?.models && man.request.models.length) return man.request.models;
-    if (man?.request?.model) return [man.request.model];
-    return [];
-  }
-
-  function deriveTreatments(man) {
-    if (man?.request?.treatments && man.request.treatments.length) return man.request.treatments;
-    if (man?.request?.treatment) return [man.request.treatment];
-    return [];
-  }
-
-  function deriveVariables(man, model, treatment) {
-    if (man?.outputs?.index && model && treatment) {
-      return Object.keys(man.outputs.index?.[model]?.[treatment] || {});
-    }
-    if (man?.outputs?.timeseries) {
-      return Object.keys(man.outputs.timeseries || {});
-    }
-    return [];
-  }
 
   async function loadJobs({ merge = true } = {}) {
     if (!auth.user) return;
@@ -417,6 +629,28 @@ export function Account() {
 
   React.useEffect(() => {
     if (auth.status !== "ready" || !auth.user) return;
+
+    const hasPending = (jobs || []).some((j) => {
+      const s = String(j.status || "").toLowerCase();
+      return s === "queued" || s === "running";
+    });
+
+    if (!hasPending) return;
+
+    const timer = window.setInterval(async () => {
+      try {
+        await api.accountRefresh(auth.token);
+        await loadJobs({ merge: true });
+      } catch {
+        // silent
+      }
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [auth.status, auth.user, auth.token, jobs]);
+
+  React.useEffect(() => {
+    if (auth.status !== "ready" || !auth.user) return;
     if (!isSuperuser) return;
     if (tab !== "admin") return;
 
@@ -465,28 +699,6 @@ export function Account() {
     }
   }
 
-  React.useEffect(() => {
-    if (auth.status !== "ready" || !auth.user) return;
-
-    const hasPending = (jobs || []).some((j) => {
-      const s = String(j.status || "").toLowerCase();
-      return s === "queued" || s === "running";
-    });
-
-    if (!hasPending) return;
-
-    const timer = window.setInterval(async () => {
-      try {
-        await api.accountRefresh(auth.token);
-        await loadJobs({ merge: true });
-      } catch {
-        // keep silent
-      }
-    }, 5000);
-
-    return () => window.clearInterval(timer);
-  }, [auth.status, auth.user, auth.token, jobs]);
-
   async function view(runLikeObj) {
     setActiveJob(runLikeObj);
     setOpen(true);
@@ -495,7 +707,8 @@ export function Account() {
     setManifest(null);
     setSelModel("");
     setSelTreatment("");
-    setVariable("GPP");
+    setSelOutputType("");
+    setVariable("");
 
     setLoadingRun(true);
 
@@ -504,25 +717,33 @@ export function Account() {
       setManifest(man);
 
       const models = deriveModels(man);
-      const treatments = deriveTreatments(man);
-
       const model0 = models[0] || "";
+
+      const treatments = deriveTreatments(man, model0);
       const treatment0 = treatments[0] || "";
+
+      const outputTypes = deriveOutputTypes(man, model0, treatment0);
+      const outputType0 = preferredOutputType(outputTypes);
+
+      const vars = deriveVariables(man, model0, treatment0, outputType0);
+      const v0 = preferredVariable(vars);
 
       setSelModel(model0);
       setSelTreatment(treatment0);
-
-      const vars = deriveVariables(man, model0, treatment0);
-      const v0 = vars.includes("GPP") ? "GPP" : (vars[0] || "GPP");
+      setSelOutputType(outputType0);
       setVariable(v0);
 
-      const r = await api.workflowRunTimeseries(auth.token, runLikeObj.id, {
-        variable: v0,
-        model: model0,
-        treatment: treatment0,
-      });
-
-      setResult(r);
+      if (model0 && treatment0 && outputType0 && v0) {
+        const r = await api.workflowRunTimeseries(auth.token, runLikeObj.id, {
+          variable: v0,
+          model: model0,
+          treatment: treatment0,
+          output_type: outputType0,
+        });
+        setResult(r);
+      } else {
+        setResult(null);
+      }
     } catch (ex) {
       alert(ex.message || String(ex));
     } finally {
@@ -533,9 +754,24 @@ export function Account() {
   async function reloadTimeseries(next = {}) {
     if (!activeJob) return;
 
-    const v = next.variable ?? variable;
     const m = next.model ?? selModel;
     const t = next.treatment ?? selTreatment;
+    const ot = next.output_type ?? selOutputType;
+
+    let v = next.variable ?? variable;
+
+    if (manifest) {
+      const vars = deriveVariables(manifest, m, t, ot);
+      if (!v || !vars.includes(v)) {
+        v = preferredVariable(vars);
+        if (v !== variable) setVariable(v);
+      }
+    }
+
+    if (!m || !t || !ot || !v) {
+      setResult(null);
+      return;
+    }
 
     setLoadingRun(true);
 
@@ -544,6 +780,7 @@ export function Account() {
         variable: v,
         model: m,
         treatment: t,
+        output_type: ot,
       });
       setResult(r);
     } catch (ex) {
@@ -675,9 +912,11 @@ export function Account() {
       variable,
       selModel,
       selTreatment,
+      selOutputType,
       setVariable,
       setSelModel,
       setSelTreatment,
+      setSelOutputType,
       reloadTimeseries,
       onClose: () => setOpen(false),
     })
